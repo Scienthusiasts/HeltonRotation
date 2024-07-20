@@ -81,7 +81,11 @@ max_lr=1e-3
 
 ## reference
 
+[CAPTAIN-WHU/DOTA_devkit (github.com)](https://github.com/CAPTAIN-WHU/DOTA_devkit)
+
 [YOLOv5_DOTAv1.5(遥感/无人机旋转目标检测，全踩坑记录) - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/357992219)
+
+[hukaixuan19970627/yolov5_obb: yolov5 + csl_label.(Oriented Object Detection)（Rotation Detection）（Rotated BBox）基于yolov5的旋转目标检测 (github.com)](https://github.com/hukaixuan19970627/yolov5_obb)
 
 SCRDet: Towards More Robust Detection for Small, Cluttered and Rotated Objects (ICCV2019)
 
