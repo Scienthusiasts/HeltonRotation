@@ -1,0 +1,12 @@
+.vscode/
+__pycache__/
+log/
+ckpt/
+samples/
+onnx_ckpt/
+debug.txt
+plot_dataset.jpg
+kmeans_for_anchors.jpg
+last.pt
+run.sh
+test_riou.py
