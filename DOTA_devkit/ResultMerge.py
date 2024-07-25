@@ -129,7 +129,8 @@ def mergebase(srcpath, dstpath, nms):
 
                 confidence = splitline[1]
                 poly = list(map(float, splitline[2:]))
-                origpoly = poly2origpoly(poly, x, y, rate)
+                # NOTE: 这里rate为1. 不然会变成归一化坐标
+                origpoly = poly2origpoly(poly, x, y, 1.)
                 det = origpoly
                 det.append(confidence)
                 det = list(map(float, det))

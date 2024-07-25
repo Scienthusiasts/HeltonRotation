@@ -37,7 +37,7 @@ class Test():
         self.tf = dynamic_import_class(path, 'Transform')(self.img_size)
         '''每个类别都获得一个随机颜色'''
         self.image2color = dict()
-        for cat in class_names:
+        for i, cat in enumerate(class_names):
             self.image2color[cat] = (np.random.random((1, 3)) * 0.7 + 0.3).tolist()[0]
 
 
