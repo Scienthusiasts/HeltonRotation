@@ -35,11 +35,7 @@
 
 ## Demo
 
-```
-整理与完善中...
-```
-
-
+![1](https://github.com/Scienthusiasts/HeltonRotation/blob/dev/demo/demo.png)
 
 ## Environments
 
@@ -59,23 +55,29 @@
 
 ## Experiment
 
-基于`DOTA_devkit`提供的接口进行评估；默认使用warmup+cos学习率衰减策略
+基于`DOTA_devkit`提供的接口进行评估(**mAP基于VOC07，NMSIoU阈值0.5，置信度阈值0.01**)；默认使用warmup+cos学习率衰减策略
 
 ### YOLOv5_obb
 
-- `DOTA-v1.0`
+- `DOTA-v1.0` (训练集为train-split，表格为val-split上的评估结果)
 
 image-size=[1024, 1024]
 
-max_lr=1e-3
+batch-size=16
 
-|       theta_loss        | epoch | lr_decay | mAP50(%) |
-| :---------------------: | :---: | :------: | :------: |
-|        smooth_l1        |  49   |   0.1    |  58.434  |
-|        smooth_l1        |  101  |   0.1    |  63.003  |
-|      IoU_smooth_l1      |  101  |   0.1    |  62.435  |
-| selective_IoU_smooth_l1 |  101  |   0.1    |    -     |
-| selective_IoU_smooth_l1 |  101  |   0.01   |    -     |
+|        Model         |       theta_loss        | cls_loss   | optim | epoch | max_lr | lr_decay |  mAP50(%)  |
+| :------------------: | :---------------------: | ---------- | :---: | :---: | :----: | :------: | :--------: |
+|       YOLOv5s        |        smooth_l1        | BCE loss   | adamw |  49   |  1e-3  |   0.1    |   58.434   |
+|       YOLOv5s        |        smooth_l1        | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   63.003   |
+|       YOLOv5s        |      IoU_smooth_l1      | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   62.435   |
+|       YOLOv5s        | selective_IoU_smooth_l1 | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   65.427   |
+|       YOLOv5s        | selective_IoU_smooth_l1 | BCE loss   | adamw |  101  |  1e-3  |   0.01   |   64.177   |
+|       YOLOv5s        | selective_IoU_smooth_l1 | focal loss | adamw |  101  |  1e-3  |   0.1    |   65.430   |
+|       YOLOv5s        | selective_IoU_smooth_l1 | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   65.271   |
+| YOLOv5s-COCOPretrain | selective_IoU_smooth_l1 | focal loss | adamw |  101  |  1e-3  |   0.1    |   63.770   |
+| YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | focal loss | adamw |  101  |  1e-3  |   0.1    |   64.565   |
+| YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | focal loss |  sgd  |  101  |  1e-2  |   0.1    | **71.255** |
+| YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | BCE loss   |  sgd  |  101  |  1e-2  |   0.1    |   69.822   |
 
 
 
