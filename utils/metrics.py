@@ -105,19 +105,19 @@ def computeParamFLOPs(device, model, img_size:list[int], ):
 
 if __name__ == '__main__':
     '''eval For DOTA-v1.0'''
-    cat_names = ['plane', 'baseball-diamond', 'bridge', 'ground-track-field', 'small-vehicle', 'large-vehicle', 'ship', 'tennis-court',
-                'basketball-court', 'storage-tank',  'soccer-ball-field', 'roundabout', 'harbor', 'swimming-pool', 'helicopter']
-    pred_txt_path = 'F:/DeskTop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_ddp/2024-06-28-04-39-46_train/eval_merge/Task1_{:s}.txt'
-    # ann_txt_path = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/annfiles/{:s}.txt'
-    ann_txt_path = 'E:/datasets/RemoteSensing/DOTA-1.0_1.5/val/labelTxt-v1.0/labelTxt/{:s}.txt' # no split
-    # imgset_file_path = "E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/val_img_name.txt"
-    imgset_file_path = 'DOTA_devkit/DOTA_devkit_lib/evaluation_format_example/val_img_name_no_split.txt' # no split
-    map50 = evalDOTAmAP(pred_txt_path, ann_txt_path, imgset_file_path, cat_names)
+    # cat_names = ['plane', 'baseball-diamond', 'bridge', 'ground-track-field', 'small-vehicle', 'large-vehicle', 'ship', 'tennis-court',
+    #             'basketball-court', 'storage-tank',  'soccer-ball-field', 'roundabout', 'harbor', 'swimming-pool', 'helicopter']
+    # pred_txt_path = 'F:/DeskTop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_ddp/2024-06-28-04-39-46_train/eval_merge/Task1_{:s}.txt'
+    # # ann_txt_path = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/annfiles/{:s}.txt'
+    # ann_txt_path = 'E:/datasets/RemoteSensing/DOTA-1.0_1.5/val/labelTxt-v1.0/labelTxt/{:s}.txt' # no split
+    # # imgset_file_path = "E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/val_img_name.txt"
+    # imgset_file_path = 'DOTA_devkit/DOTA_devkit_lib/evaluation_format_example/val_img_name_no_split.txt' # no split
+    # map50 = evalDOTAmAP(pred_txt_path, ann_txt_path, imgset_file_path, cat_names)
 
 
 
 
     '''merge'''
-    # src_dir = 'F:/DeskTop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_ddp/2024-06-28-04-39-46_train/eval_tmp'
-    # tgt_dir = 'F:/DeskTop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_ddp/2024-06-28-04-39-46_train/eval_merge'
-    # mergeSplitResult(src_dir, tgt_dir)
+    src_dir = 'log/tmp_exp/2024-07-27-11-35-09_val/eval_tmp'
+    tgt_dir = 'log/tmp_exp/2024-07-27-11-35-09_val/eval_merge'
+    mergeSplitResult(src_dir, tgt_dir)

@@ -409,7 +409,7 @@ if __name__ == '__main__':
 
 
     '''生成DOTA_devkit评估时要用到的img_name_file.txt'''
-    ann_txt_root = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/annfiles'
-    img_name_file_path = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/val_img_name.txt'
+    ann_txt_root = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/trainval/annfiles'
+    img_name_file_path = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/trainval_img_name.txt'
     genDOTAImgNameFile(ann_txt_root, img_name_file_path)
     

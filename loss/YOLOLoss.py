@@ -97,6 +97,7 @@ class IOUSmoothL1Loss(nn.Module):
         self.basic_loss = nn.SmoothL1Loss(reduction="none")
         # 防止除以0的情况出现
         self.e = 1e-7
+        self.theta_T = 10
 
 
     def computeFactor(self, basic_loss, pred_rboxes, target_rboxes):
@@ -116,7 +117,8 @@ class IOUSmoothL1Loss(nn.Module):
         factor = 0.005 * riou.log().abs() / norm_factor
         '''对于那些GT不是在边界范围内的框, 则还是使用原本的SmoothL1的梯度, 不使用IoU'''
         target_theta = target_rboxes[:,-1] * 180 - 180
-        condition = (target_theta > -170) & (target_theta < -10)
+        # 角度超出边界范围10度以上就不使用rIoU因子
+        condition = (target_theta > -180+self.theta_T) & (target_theta < -self.theta_T)
         no_edge_idx = condition.nonzero(as_tuple=False)
         factor[no_edge_idx] = 1.
         return factor

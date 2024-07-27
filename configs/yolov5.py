@@ -1,22 +1,28 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'test'
+MODE = 'eval'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
-PHI = 's'
-BACKBONE = f'../CKPT/HD_ckpt/ckpt/cspdarknet_{PHI}_v6.1_backbone.pth'
-LOADCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5{PHI}_obb/epoch101_smooths1_theta/2024-07-19-09-40-13_train/last.pt"
-TESTCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5{PHI}_obb/epoch101_smooths1_theta/2024-07-19-09-40-13_train/last.pt"
+PHI = 'l'
 RESUME = False
 TTA = [[640,640], [832,832], [960,960]]
 TTAOPEN = False
 MASK = [[0,1,2], [3,4,5], [6,7,8]] 
 
+BACKBONE = f'../CKPT/HD_ckpt/ckpt/cspdarknet_{PHI}_v6.1_backbone.pth'
+# l:
+LOADCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval/2024-07-26-19-08-35_train/last.pt"
+TESTCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval/2024-07-26-19-08-35_train/last.pt"
+# s:
+# LOADCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5s_obb/IoUsmooths1_theta/2024-07-20-10-28-14_train/best_AP50.pt"
+# TESTCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5s_obb/IoUsmooths1_theta/2024-07-20-10-28-14_train/best_AP50.pt"
+
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
-TESTCKPT = 'last.pt'
-LOADCKPT = 'last.pt'
+
+# LOADCKPT = 'last.pt'
+# TESTCKPT = 'last.pt'
 
 
 
@@ -160,7 +166,7 @@ test = dict(
     # 角度周期性问题：
     # "E:/datasets/RemoteSensing/DIOR/JPEGImages-trainval/00268.jpg" 417
     # "E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/test/images/P0006__1024__0___505.png" P0016__1024__0___0.png P0006__1024__30___505.png
-    img_path = r"E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/images/P0262__1024__512___0.png",
+    img_path = r"E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/test/images/P0675__1024__90___0.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",

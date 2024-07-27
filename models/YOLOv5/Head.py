@@ -31,10 +31,9 @@ class YOLOv5Head(nn.Module):
         self.balance = [4, 1.0, 0.4]
         # 自适应调整不同损失的权重，在COCO数据集下，默认回归损失权重0.05, 分类损失权重1 obj损失权重0.5
         self.box_ratio = 0.05
-        self.obj_ratio = 1 #* (img_size[0] * img_size[1]) / (640 ** 2)
+        self.obj_ratio = 1   #* (img_size[0] * img_size[1]) / (640 ** 2)
         self.cls_ratio = 0.5 #* (self.num_classes / 80)
         self.theta_ratio = 1
-        print(f'box_loss_ratio:{self.box_ratio} | obj_loss_ratio:{self.obj_ratio} | cls_loss_ratio:{self.cls_ratio}')
 
         '''损失函数'''
         self.cls_loss_type = cls_loss_type
