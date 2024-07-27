@@ -3,7 +3,7 @@
 
 该项目的基本框架逻辑遵循：[HeltonDetection](https://github.com/Scienthusiasts/HeltonDetection)
 
-**create 24/7/21: **
+**Create 24/7/21: **
 
 - 发布dev分支
 
@@ -55,7 +55,7 @@
 
 ## Experiment
 
-基于`DOTA_devkit`提供的接口进行评估(**mAP基于VOC07，NMSIoU阈值0.5，置信度阈值0.01**)；默认使用warmup+cos学习率衰减策略
+基于`DOTA_devkit`提供的接口进行评估(**mAP基于VOC07，NMSIoU阈值0.1(大于过滤)，置信度阈值0.01**)；默认使用warmup+cos学习率衰减策略
 
 ### YOLOv5_obb
 
@@ -76,8 +76,17 @@ batch-size=16
 |       YOLOv5s        | selective_IoU_smooth_l1 | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   65.271   |
 | YOLOv5s-COCOPretrain | selective_IoU_smooth_l1 | focal loss | adamw |  101  |  1e-3  |   0.1    |   63.770   |
 | YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | focal loss | adamw |  101  |  1e-3  |   0.1    |   64.565   |
+|       YOLOv5l        |      IoU_smooth_l1      | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   70.192   |
 | YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | focal loss |  sgd  |  101  |  1e-2  |   0.1    | **71.255** |
 | YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | BCE loss   |  sgd  |  101  |  1e-2  |   0.1    |   69.822   |
+
+**upload to DOTA server evaluation result (testset):**
+
+yolov5l_Select_IoUsmooths1_rootfocalloss_epoch101_lr1e-2_sgd_trainval
+
+|  PL   |  BD   |  BR   |  GTF  |  SV   |  LV   |  SH   |  TC   |  BC   |  ST   |  SBF  |  RA   |  HA   |  SP   |  HC   | mAP50 | mAP75 |  mAP  |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 88.39 | 81.05 | 43.35 | 59.64 | 79.32 | 75.93 | 86.99 | 90.87 | 86.90 | 87.62 | 49.03 | 64.55 | 67.83 | 71.23 | 57.35 | 72.68 | 38.99 | 40.23 |
 
 
 
