@@ -25,8 +25,10 @@ from datasets.preprocess import *
 
 
 
-# 角度的范围在[-180, 0)
+
 class DOTA2LongSideFormatYOLODataset(Dataset):
+    '''基于DOTA数据集YOLO格式的长边表示法数据集读取方式, 角度的范围在[-180, 0)
+    '''
 
     def __init__(self, num_classes, cat_names2id, anchors, anchors_mask, ann_dir, img_dir, img_shape=[1024, 1024], input_shape=[800, 800], ann_mode='yolo', theta_mode='-180', trainMode=True):
         '''__init__() 为默认构造函数，传入数据集类别（训练或测试），以及数据集路径
@@ -50,12 +52,13 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         self.anchors_mask = anchors_mask
         self.img_shape = img_shape
         self.input_shape = input_shape
-        self.tf = Transform('coco')
         self.img_dir = img_dir
         self.ann_dir = ann_dir
         self.ann_list = os.listdir(ann_dir)
         # 数据集大小
         self.datasetNum = len(self.ann_list)
+        # 图像增强变换
+        self.tf = Transform('coco', img_shape, input_shape, self.datasetNum)
 
     def __len__(self):
         '''重载data.Dataset父类方法, 返回数据集大小
@@ -180,14 +183,14 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
             image, boxes, angle, labels, mosaic_flag = self.yoloMosaic4(image, boxes, angle, labels, p=0.5)
             if mosaic_flag:
                 # 如果经过mosaic增强，则旋转角度小一些(缓解padding里的box去不掉的现象)
-                image, boxes, angle = self.randomRotate(image, boxes, angle, 10, 1, p=0.5)
+                image, boxes, angle = self.tf.randomRotate(image, boxes, angle, 10, 1, p=0.5)
             else:
                 # 如果未经过mosaic增强，则旋转角度大一些
-                image, boxes, angle = self.randomRotate(image, boxes, angle, 45, 1.3, p=0.5)
+                image, boxes, angle = self.tf.randomRotate(image, boxes, angle, 45, 1.3, p=0.5)
         # 数据预处理(归一化)
         image = self.normalAlbumAug(image)
         # 图像resize
-        image = self.resize(image)
+        image = self.tf.resize(image)
         return image, boxes, angle, labels
 
 
@@ -198,9 +201,9 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         train_trans = self.tf.trainTF(image=image)
         image = train_trans['image'] 
         # 水平/竖直翻转增强
-        image, boxes, angle = self.hflip(image, boxes, angle, p=0.5)
-        image, boxes, angle = self.vflip(image, boxes, angle, p=0.5)
-        image, boxes, angle = self.mirrorflip(image, boxes, angle, p=0.5)
+        image, boxes, angle = self.tf.hflip(image, boxes, angle, p=0.5)
+        image, boxes, angle = self.tf.vflip(image, boxes, angle, p=0.5)
+        image, boxes, angle = self.tf.mirrorflip(image, boxes, angle, p=0.5)
         # 这里的box是coco格式(xywh)
         return image, boxes, angle
         
@@ -216,78 +219,8 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
     
 
 
-    def resize(self, image):
-        """图像resize
-        """
-        if (self.img_shape != self.input_shape):
-            image = cv2.resize(image, dsize=self.input_shape)
-        return image
 
-
-    def hflip(self, image, boxes, angle, p):
-        """水平翻转增强
-        """
-        if (np.random.rand() < p):
-            image = cv2.flip(image, 1)
-            boxes[:, 0] = self.img_shape[0] - boxes[:, 0]
-            angle = - angle - 180
-        return image, boxes, angle
-
-
-    def vflip(self, image, boxes, angle, p):
-        """竖直翻转增强
-        """
-        if (np.random.rand() < p):
-            image = cv2.flip(image, 0)
-            boxes[:, 1] = self.img_shape[1] - boxes[:, 1]
-            angle = - angle - 180
-        return image, boxes, angle
-    
-
-    def mirrorflip(self, image, boxes, angle, p):
-        """斜对称翻转增强
-        """
-        if (np.random.rand() < p):
-            image = cv2.transpose(image)
-            boxes[:, [0, 1]] = boxes[:, [1, 0]]
-            angle = -270 - angle
-            angle[angle < -180] += 180
-        return image, boxes, angle
-    
-
-
-    def randomRotate(self, image, boxes, angle, aug_angle, ratio, p=0.5):
-        """随机旋转增强
-        """
-        if (np.random.rand() < p):
-            W, H = self.img_shape
-            # 绕图片中心进行旋转
-            center = (W / 2, H / 2)   
-            # 旋转方向取(-aug_angle，aug_angle)中的随机整数值，负为逆时针，正为顺势针
-            aug_angle = random.randint(-aug_angle, aug_angle)  
-            scale = np.cos(aug_angle*np.pi/180)*ratio
-            # 获得旋转矩阵
-            M = cv2.getRotationMatrix2D(center, aug_angle, scale)
-            # 对cxcy执行旋转变换
-            cxcy = np.concatenate((boxes[:, :2].T, np.ones((1, boxes.shape[0]))))
-            rotate_cxcy = (M @ cxcy).T
-            boxes[:, :2] = rotate_cxcy
-            # 对wh进行缩放
-            boxes[:, 2:] *= scale
-            angle += aug_angle
-            # 对超出范围的角度进行调整
-            angle[angle < -180] += 180
-            angle[angle > 0] -= 180
-            # 进行仿射变换，边界填充为128
-            image = cv2.warpAffine(src=image, M=M, dsize=(H, W), borderValue=(128, 128, 128))
-
-        return image, boxes, angle
-
-
-
-
-
-    def yoloMosaic4(self, image1, boxes1, angle1, labels1, jitter=0.2, scale=.5, p=0.5):
+    def yoloMosaic4(self, image1, boxes1, angle1, labels1, scale=.5, p=0.5):
         """mosaic数据增强, 将四张图像拼在一起
         """
         mosaic_flag = False
@@ -303,73 +236,15 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
             image2, boxes2, angle2 = self.trainAlbumAug(image2, boxes2, angle2)
             image3, boxes3, angle3 = self.trainAlbumAug(image3, boxes3, angle3)
             image4, boxes4, angle4 = self.trainAlbumAug(image4, boxes4, angle4)
-            W, H = self.input_shape
-            # 放置图像的中心位置
-            cx = int(random.uniform(0.3, 0.7) * W)
-            cy = int(random.uniform(0.3, 0.7) * H)
             images = [image1, image2, image3, image4]
             bboxes = [boxes1, boxes2, boxes3, boxes4]
             labels = [labels1, labels2, labels3, labels4]
             angles = [angle1, angle2, angle3, angle4]
-            mosaic_img = np.ones((W, H, 3), dtype=np.uint8) * 128
-            for i in range(4):
-                bboxes[i] = np.array(bboxes[i])
-                labels[i] = np.array(labels[i])
-                w, h, _ = images[i].shape
-                # 对图像进行缩放并且进行长和宽的扭曲
-                scale = random.uniform(scale, 1)
-                scale_w = random.uniform(1-jitter,1+jitter) * scale
-                scale_h = random.uniform(1-jitter,1+jitter) * scale
-                new_w, new_h = int(w * scale_w), int(h * scale_h)
-                # 对图像进行缩放
-                images[i] = cv2.resize(images[i], (new_h, new_w))
-                # 对box进行缩放
-                bboxes[i][:, [0,2]] *= scale_h
-                bboxes[i][:, [1,3]] *= scale_w
-                # 图像mosaic到一张图像上:
-                if i==0: 
-                    mosaic_img[max(cx-new_w, 0):cx, max(cy-new_h, 0):cy, :] = images[i][max(0, new_w-cx):, max(0, new_h-cy):, :]
-                    # 对图像进行平移
-                    bboxes[i][:,0] += (cy-new_h)
-                    bboxes[i][:,1] += (cx-new_w)
-                if i==1:
-                    mosaic_img[cx:min(W, cx+new_w), max(cy-new_h, 0):cy, :] = images[i][:min(new_w, W-cx), max(0, new_h-cy):, :]
-                    # 对图像进行平移
-                    bboxes[i][:,0] += (cy-new_h)
-                    bboxes[i][:,1] += cx
-                if i==2: 
-                    mosaic_img[max(cx-new_w, 0):cx, cy:min(H, cy+new_h), :] = images[i][max(0, new_w-cx):, :min(new_h, H-cy), :]
-                    # 对图像进行平移
-                    bboxes[i][:,0] += cy
-                    bboxes[i][:,1] += (cx-new_w)
-                if i==3: 
-                    # 对图像进行平移
-                    bboxes[i][:,0] += cy
-                    bboxes[i][:,1] += cx
-                    mosaic_img[cx:min(W, cx+new_w), cy:min(H, cy+new_h), :] = images[i][:min(new_w, W-cx), :min(new_h, H-cy), :]
-
-                # 边界处理
-                # keep = np.where(np.logical_and(bboxes[i][:,0]>-20, bboxes[i][:,1]>-20))[0]
-                # bboxes[i] = bboxes[i][keep]
-                # labels[i] = labels[i][keep]
-                # angles[i] = angles[i][keep]
-                # keep = np.where(np.logical_and((bboxes[i][:,2] + bboxes[i][:,0])<self.img_shape[0]+20, (bboxes[i][:,3] + bboxes[i][:,1])<self.img_shape[1]+20))[0]
-                # bboxes[i] = bboxes[i][keep]
-                # labels[i] = labels[i][keep]
-                # angles[i] = angles[i][keep]
-
-            labels = np.concatenate(labels, axis=0)
-            angles = np.concatenate(angles, axis=0)
-            bboxes = np.concatenate(bboxes, axis=0)
-            if len(bboxes) != 0:
-                return mosaic_img, bboxes, angles, labels, mosaic_flag
- 
+            # mosaic4图像增强
+            mosaic_img, bboxes, angles, labels = self.tf.yoloMosaic4(images, bboxes, angles, labels, scale=.5)
+            return mosaic_img, bboxes, angles, labels, mosaic_flag
+            
         return image1, boxes1, angle1, labels1, mosaic_flag
-
-
-
-
-
 
 
 
@@ -430,8 +305,8 @@ def seed_everything(seed):
 
 
 
-def visBatch(dataLoader:DataLoader, cat_names, theta_mode, showText=False):
-    '''可视化训练集一个batch
+def visBatch(batch, cat_names, theta_mode, showText=False):
+    '''可视化训练集一个batch的数据
     Args:
         dataLoader: torch的data.DataLoader
     Retuens:
@@ -442,43 +317,41 @@ def visBatch(dataLoader:DataLoader, cat_names, theta_mode, showText=False):
                (255, 193, 193), (0, 51, 153), (255, 250, 205), (0, 139, 139),
                (255, 255, 0), (147, 116, 116), (0, 0, 255)]
     modify_theta = {'-180':-180.0, '-90':-90.0}[theta_mode]
-    for step, batch in enumerate(dataLoader):
-        images, boxes = batch[0], batch[1]
-        # 只可视化一个batch的图像：
-        if step > 0: break
-        # 图像均值
-        mean = np.array([0.485, 0.456, 0.406]) 
-        # 标准差
-        std = np.array([[0.229, 0.224, 0.225]]) 
-        plt.figure(figsize = (10, 10))
-        for idx, imgBoxLabel in enumerate(zip(images, boxes)):
-            img, box = imgBoxLabel
-            box = box.numpy()
-            # norm(cxcywh) -> cxcywh
-            box[:, [0, 2]] = box[:, [0, 2]] * img.shape[2]
-            box[:, [1, 3]] = box[:, [1, 3]] * img.shape[1]
-            ax = plt.subplot(8, 8, idx+1)
-            img = img.numpy().transpose((1,2,0))
-            # 由于在数据预处理时我们对数据进行了标准归一化，可视化的时候需要将其还原
-            img = np.clip(img * std + mean, 0, 1)
-            for instBox in box:
-                rect = longsideFormat2OpenCVFormat(instBox[0], instBox[1], instBox[2], instBox[3], -instBox[4]+modify_theta)
-                poly = np.float32(cv2.boxPoints(rect))
 
-                # 显示框
-                color = tuple([c/255 for c in cat_color[int(instBox[5])]])
-                ax.add_patch(plt.Polygon(poly, edgecolor=color, facecolor='none', linewidth=0.6))
-                # 显示类别
-                if showText:
-                    ax.text(int(instBox[0]), int(instBox[1]), cat_names[int(instBox[5])], fontsize=3, bbox={'facecolor':'white', 'alpha':0.5, 'pad':1})
-            plt.imshow(img)
-            # 在图像上方展示对应的标签
-            # 取消坐标轴
-            plt.axis("off")
-             # 微调行间距
-            plt.subplots_adjust(left=0.01, bottom=0.01, right=0.99, top=0.99, wspace=0.01, hspace=0.01)
-        # plt.show()
-        plt.savefig('plot_dataset.jpg', dpi=400)
+    images, boxes = batch[0], batch[1]
+    # 图像均值
+    mean = np.array([0.485, 0.456, 0.406]) 
+    # 标准差
+    std = np.array([[0.229, 0.224, 0.225]]) 
+    plt.figure(figsize = (10, 10))
+    for idx, imgBoxLabel in enumerate(zip(images, boxes)):
+        img, box = imgBoxLabel
+        box = box.numpy()
+        # norm(cxcywh) -> cxcywh
+        box[:, [0, 2]] = box[:, [0, 2]] * img.shape[2]
+        box[:, [1, 3]] = box[:, [1, 3]] * img.shape[1]
+        ax = plt.subplot(8, 8, idx+1)
+        img = img.numpy().transpose((1,2,0))
+        # 由于在数据预处理时我们对数据进行了标准归一化，可视化的时候需要将其还原
+        img = np.clip(img * std + mean, 0, 1)
+        for instBox in box:
+            rect = longsideFormat2OpenCVFormat(instBox[0], instBox[1], instBox[2], instBox[3], -instBox[4]+modify_theta)
+            poly = np.float32(cv2.boxPoints(rect))
+
+            # 显示框
+            color = tuple([c/255 for c in cat_color[int(instBox[5])]])
+            ax.add_patch(plt.Polygon(poly, edgecolor=color, facecolor='none', linewidth=0.6))
+            # 显示类别
+            if showText:
+                ax.text(int(instBox[0]), int(instBox[1]), cat_names[int(instBox[5])], fontsize=3, bbox={'facecolor':'white', 'alpha':0.5, 'pad':1})
+        plt.imshow(img)
+        # 在图像上方展示对应的标签
+        # 取消坐标轴
+        plt.axis("off")
+            # 微调行间距
+        plt.subplots_adjust(left=0.01, bottom=0.01, right=0.99, top=0.99, wspace=0.01, hspace=0.01)
+    # plt.show()
+    plt.savefig('plot_dataset.jpg', dpi=400)
 
 
 
@@ -492,7 +365,7 @@ def visBatch(dataLoader:DataLoader, cat_names, theta_mode, showText=False):
 
 def test_dota():
     # 固定随机种子 122
-    seed = 122
+    seed = 123
     seed_everything(seed)
     # BatcchSize
     BS = 64
@@ -533,9 +406,9 @@ def test_dota():
 
 
     print(f'训练集大小 : {trainDataset.__len__()}')
-    visBatch(trainDataLoader, cat_names, theta_mode=theta_mode, showText=False)
     cnt = 0
     for step, batch in enumerate(trainDataLoader):
+        visBatch(batch, cat_names, theta_mode=theta_mode, showText=False)
         # box[i]: [:, 6], (cx, cy, long_side, short_side, θ, cls_id)
         images, boxes, y_trues = batch[0], batch[1], batch[2]
         cnt+=1

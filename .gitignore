@@ -10,3 +10,4 @@ kmeans_for_anchors.jpg
 last.pt
 run.sh
 test_riou.py
+best_AP50.pt

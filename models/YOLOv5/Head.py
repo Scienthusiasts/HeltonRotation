@@ -109,7 +109,7 @@ class YOLOv5Head(nn.Module):
             box_loss += loss_box
             cls_loss += loss_cls
             total_loss += loss_box * self.box_ratio + loss_cls * self.cls_ratio + loss_theta * self.theta_ratio 
-            # obj正样本对应位置的预测值设置为这个位置的预测框与GT的giou
+            # obj正样本对应位置的预测值设置为这个位置的预测框与GT的giou(因此可以认为obj的GT其实是动态的?)
             tobj = torch.where(pos_idx, giou.detach().clamp(0), torch.zeros_like(y_true[..., 5]))
         else:
             tobj = torch.zeros_like(y_true[..., 5])

@@ -119,8 +119,7 @@ class IOUSmoothL1Loss(nn.Module):
         target_theta = target_rboxes[:,-1] * 180 - 180
         # 角度超出边界范围10度以上就不使用rIoU因子
         condition = (target_theta > -180+self.theta_T) & (target_theta < -self.theta_T)
-        no_edge_idx = condition.nonzero(as_tuple=False)
-        factor[no_edge_idx] = 1.
+        factor[condition] = 1.
         return factor
     
 

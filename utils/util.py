@@ -433,7 +433,7 @@ class TTA():
 
     def __init__(self, tta_img_size=[[640,640], [832,832], [960,960]]):
         self.tta_img_size = tta_img_size
-        self.tta_transform = [Transform(img_size, box_format='coco') for img_size in self.tta_img_size]        
+        self.tta_transform = [Transform(img_shape=img_size) for img_size in self.tta_img_size]        
 
 
     def infer(self,

@@ -1,6 +1,7 @@
 import numpy as np
 from tabulate import tabulate
 import cv2
+import os
 from tqdm import tqdm
 import torch
 from thop import profile
@@ -64,6 +65,7 @@ def mergeSplitResult(src_dir, tgt_dir):
         # Returns:
             - None
     '''
+    if not os.path.isdir(tgt_dir):os.mkdir(tgt_dir)
     merge.mergebypoly(src_dir, tgt_dir)
 
 
@@ -118,6 +120,6 @@ if __name__ == '__main__':
 
 
     '''merge'''
-    src_dir = 'log/tmp_exp/2024-07-27-11-35-09_val/eval_tmp'
-    tgt_dir = 'log/tmp_exp/2024-07-27-11-35-09_val/eval_merge'
+    src_dir = 'log/tmp_exp/2024-08-01-14-57-26_val/eval_tmp'
+    tgt_dir = 'log/tmp_exp/2024-08-01-14-57-26_val/eval_merge'
     mergeSplitResult(src_dir, tgt_dir)

@@ -1,7 +1,7 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'eval'
+MODE = 'test'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
 PHI = 'l'
@@ -12,17 +12,17 @@ MASK = [[0,1,2], [3,4,5], [6,7,8]]
 
 BACKBONE = f'../CKPT/HD_ckpt/ckpt/cspdarknet_{PHI}_v6.1_backbone.pth'
 # l:
-LOADCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval/2024-07-26-19-08-35_train/last.pt"
-TESTCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval/2024-07-26-19-08-35_train/last.pt"
+LOADCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval_modifyaug/2024-07-28-15-59-35_train/last.pt"
+TESTCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval_modifyaug/2024-07-28-15-59-35_train/last.pt"
 # s:
-# LOADCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5s_obb/IoUsmooths1_theta/2024-07-20-10-28-14_train/best_AP50.pt"
-# TESTCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5s_obb/IoUsmooths1_theta/2024-07-20-10-28-14_train/best_AP50.pt"
+# LOADCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5s_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval_modifyaug/2024-07-29-17-25-45_train/last.pt"
+# TESTCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5s_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval_modifyaug/2024-07-29-17-25-45_train/last.pt"
 
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
 
-# LOADCKPT = 'last.pt'
-# TESTCKPT = 'last.pt'
+LOADCKPT = 'last.pt'
+TESTCKPT = 'last.pt'
 
 
 
@@ -47,6 +47,7 @@ reverse_map = None
 ann_name = {'dota':'annfiles', 'yolo':'yolo_longside_format_annfiles'}[ann_mode]
 train_img_dir = "E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/images"
 train_ann_dir = f"E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/{ann_name}"
+# 要推理test测试集时只需修改val_img_dir:
 val_img_dir = "E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/images"
 val_ann_dir = f"E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/{ann_name}"
 # 这两个评估时会用到, 其中eval_ann_dir里的txt是基于DOTA八参格式
@@ -166,7 +167,7 @@ test = dict(
     # 角度周期性问题：
     # "E:/datasets/RemoteSensing/DIOR/JPEGImages-trainval/00268.jpg" 417
     # "E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/test/images/P0006__1024__0___505.png" P0016__1024__0___0.png P0006__1024__30___505.png
-    img_path = r"E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/test/images/P0675__1024__90___0.png",
+    img_path = r"E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/test/images/P0006__1024__0___505.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",
