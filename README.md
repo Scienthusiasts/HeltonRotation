@@ -65,20 +65,27 @@ image-size=[1024, 1024]
 
 batch-size=16
 
-|        Model         |       theta_loss        | cls_loss   | optim | epoch | max_lr | lr_decay |  mAP50(%)  |
-| :------------------: | :---------------------: | ---------- | :---: | :---: | :----: | :------: | :--------: |
-|       YOLOv5s        |        smooth_l1        | BCE loss   | adamw |  49   |  1e-3  |   0.1    |   58.434   |
-|       YOLOv5s        |        smooth_l1        | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   63.003   |
-|       YOLOv5s        |      IoU_smooth_l1      | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   62.435   |
-|       YOLOv5s        | selective_IoU_smooth_l1 | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   65.427   |
-|       YOLOv5s        | selective_IoU_smooth_l1 | BCE loss   | adamw |  101  |  1e-3  |   0.01   |   64.177   |
-|       YOLOv5s        | selective_IoU_smooth_l1 | focal loss | adamw |  101  |  1e-3  |   0.1    |   65.430   |
-|       YOLOv5s        | selective_IoU_smooth_l1 | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   65.271   |
-| YOLOv5s-COCOPretrain | selective_IoU_smooth_l1 | focal loss | adamw |  101  |  1e-3  |   0.1    |   63.770   |
-| YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | focal loss | adamw |  101  |  1e-3  |   0.1    |   64.565   |
-|       YOLOv5l        |      IoU_smooth_l1      | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   70.192   |
-| YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | focal loss |  sgd  |  101  |  1e-2  |   0.1    | **71.255** |
-| YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | BCE loss   |  sgd  |  101  |  1e-2  |   0.1    |   69.822   |
+|        Model         |           theta_loss           | cls_loss   | optim | epoch | max_lr | lr_decay |  mAP50(%)  |
+| :------------------: | :----------------------------: | ---------- | :---: | :---: | :----: | :------: | :--------: |
+|       YOLOv5s        |           smooth_l1            | BCE loss   | adamw |  49   |  1e-3  |   0.1    |   58.434   |
+|       YOLOv5s        |           smooth_l1            | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   63.003   |
+|       YOLOv5s        |         IoU_smooth_l1          | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   62.435   |
+|       YOLOv5s        |    selective_IoU_smooth_l1     | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   65.427   |
+|       YOLOv5s        |    selective_IoU_smooth_l1     | BCE loss   | adamw |  101  |  1e-3  |   0.01   |   64.177   |
+|       YOLOv5s        |    selective_IoU_smooth_l1     | focal loss | adamw |  101  |  1e-3  |   0.1    |   65.430   |
+|       YOLOv5s        |         RIoU_loss(box)         | focal loss | adamw |  101  |  1e-3  |   0.1    |   59.724   |
+|       YOLOv5s        |      RIoU_loss(box, obj)       | focal loss | adamw |  101  |  1e-3  |   0.1    |   66.529   |
+|       YOLOv5s        | RIoU_loss_**linear**(box, obj) | focal loss | adamw |  101  |  1e-3  |   0.1    |            |
+|       YOLOv5s        |    selective_IoU_smooth_l1     | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   65.271   |
+|       YOLOv5s        |         RIoU_loss(box)         | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   64.401   |
+|       YOLOv5s        |      RIoU_loss(box, obj)       | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   65.606   |
+| YOLOv5s-COCOPretrain |    selective_IoU_smooth_l1     | focal loss | adamw |  101  |  1e-3  |   0.1    |   63.770   |
+| YOLOv5l (train_ddp)  |    selective_IoU_smooth_l1     | focal loss | adamw |  101  |  1e-3  |   0.1    |   64.565   |
+|       YOLOv5l        |         IoU_smooth_l1          | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   70.192   |
+| YOLOv5l (train_ddp)  |    selective_IoU_smooth_l1     | focal loss |  sgd  |  101  |  1e-2  |   0.1    | **71.255** |
+| YOLOv5l (train_ddp)  |      RIoU_loss(box, obj)       | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   69.234   |
+| YOLOv5l (train_ddp)  |      RIoU_loss(box, obj)       | focal loss | adamw |  101  |  1e-3  |   0.1    |   66.389   |
+| YOLOv5l (train_ddp)  |    selective_IoU_smooth_l1     | BCE loss   |  sgd  |  101  |  1e-2  |   0.1    |   69.822   |
 
 **upload to DOTA server evaluation result (testset):**
 

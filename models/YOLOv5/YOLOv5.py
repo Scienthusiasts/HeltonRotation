@@ -82,7 +82,7 @@ class Model(nn.Module):
         p5_loss = self.p5_head.batchLoss(p5, y_trues[2])
         loss = dict(
             total_loss = p3_loss['total_loss'] + p4_loss['total_loss'] + p5_loss['total_loss'],
-            theta_loss = p3_loss['theta_loss'] + p4_loss['theta_loss'] + p5_loss['theta_loss'],
+            # theta_loss = p3_loss['theta_loss'] + p4_loss['theta_loss'] + p5_loss['theta_loss'],
             box_loss = p3_loss['box_loss'] + p4_loss['box_loss'] + p5_loss['box_loss'],
             cls_loss = p3_loss['cls_loss'] + p4_loss['cls_loss'] + p5_loss['cls_loss'],
             obj_loss = p3_loss['obj_loss'] + p4_loss['obj_loss'] + p5_loss['obj_loss'],

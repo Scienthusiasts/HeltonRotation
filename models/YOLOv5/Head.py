@@ -12,7 +12,7 @@ from loss.YOLOLoss import *
 
 
 class YOLOv5Head(nn.Module):
-    def __init__(self, l, cat_nums, img_size, anchors, in_channels, anchors_mask, cls_loss_type, box_loss_type, obj_loss_type, label_smoothing=0):
+    def __init__(self, l, cat_nums, img_size, anchors, in_channels, anchors_mask, reg_loss_type, cls_loss_type, box_loss_type, obj_loss_type, label_smoothing=0):
         '''RPN网络
         Args:
 
@@ -36,14 +36,15 @@ class YOLOv5Head(nn.Module):
         self.theta_ratio = 1
 
         '''损失函数'''
+        self.reg_loss_type = reg_loss_type
         self.cls_loss_type = cls_loss_type
         self.box_loss_type = box_loss_type
         self.obj_loss_type = obj_loss_type
         self.clsLoss = Loss(loss_type=cls_loss_type)
         self.boxLoss = Loss(loss_type=box_loss_type)    
         self.objLoss = Loss(loss_type=obj_loss_type)    
-        # self.thetaLoss = nn.SmoothL1Loss()
         self.IoUSmoothl1Loss = IOUSmoothL1Loss()
+        self.RIoULoss = RotatedIoULoss()
 
         '''coupled yolov5 head'''
         self.head = nn.Conv2d(in_channels, len(anchors_mask) * (6 + self.num_classes), 1)
@@ -92,12 +93,16 @@ class YOLOv5Head(nn.Module):
         if torch.sum(y_true[..., 5] == 1) != 0:
             # 正样本索引
             pos_idx = y_true[..., 5] == 1
-            '''角度回归损失(只对属于正样本的grid计算梯度)'''
-            # loss_theta = self.thetaLoss(theta[pos_idx], y_true[..., 4][pos_idx])
-            loss_theta = self.IoUSmoothl1Loss(pred_boxes[pos_idx], y_true[..., :5][pos_idx])
-            '''定位损失(直接用的giou) [bs, 3, w, h](只对属于正样本的grid计算梯度)'''
-            giou = bboxIoU(pred_boxes[..., :-1], y_true[..., :4], GIoU=True).type_as(x).squeeze(-1)
-            loss_box = self.boxLoss(giou, y_true[..., 5])
+            loss_theta = torch.tensor(0).to(x.device)
+            if self.reg_loss_type == 'IoUSmoothl1Loss':
+                '''角度回归损失(只对属于正样本的grid计算梯度)'''
+                loss_theta = self.IoUSmoothl1Loss(pred_boxes, y_true[..., :5], pos_idx)
+                '''定位损失(直接用的giou) [bs, 3, w, h](只对属于正样本的grid计算梯度)'''
+                iou = bboxIoU(pred_boxes[..., :-1], y_true[..., :4], GIoU=True).type_as(x).squeeze(-1)
+                loss_box = self.boxLoss(iou, y_true[..., 5])
+            if self.reg_loss_type == 'RotatedIoU1Loss':
+                '''角度+定位损失(rotated_iou)(只对属于正样本的grid计算梯度)'''
+                loss_box, iou = self.RIoULoss(pred_boxes, y_true[..., :5], pos_idx)
             '''分类损失(只对属于正样本的grid计算梯度)'''
             # cls_gt.shape = [nums_gt, 10] (one-hot)
             cls_gt = smooth_labels(y_true[..., 6:][pos_idx], self.label_smoothing, self.num_classes)
@@ -110,7 +115,7 @@ class YOLOv5Head(nn.Module):
             cls_loss += loss_cls
             total_loss += loss_box * self.box_ratio + loss_cls * self.cls_ratio + loss_theta * self.theta_ratio 
             # obj正样本对应位置的预测值设置为这个位置的预测框与GT的giou(因此可以认为obj的GT其实是动态的?)
-            tobj = torch.where(pos_idx, giou.detach().clamp(0), torch.zeros_like(y_true[..., 5]))
+            tobj = torch.where(pos_idx, iou.detach().clamp(0), torch.zeros_like(y_true[..., 5]))
         else:
             tobj = torch.zeros_like(y_true[..., 5])
         '''目标损失(当前网格是否有目标)(对所有样本计算梯度)'''
@@ -130,10 +135,6 @@ class YOLOv5Head(nn.Module):
             obj_loss = obj_loss
         )
         return loss
-
-
-
-
 
 
 
