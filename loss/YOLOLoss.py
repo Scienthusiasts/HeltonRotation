@@ -61,8 +61,12 @@ def GIoULoss(box_giou, target):
 
 
 class Loss(nn.Module):
-    def __init__(self, loss_type:str, gamma=1.5, alpha=0.25):
+    def __init__(self, loss_type:str, gamma=1.5, alpha=0.25, reduction='mean'):
+        '''
+            - loss_type: BCELoss | MSELoss | FocalLoss | QFocalLoss | GIoULoss
+        '''
         super().__init__()
+        self.reduction = reduction
         self.loss_fcn = nn.BCEWithLogitsLoss(reduction="none")
         self.loss_type = loss_type
         self.gamma = gamma
@@ -80,67 +84,72 @@ class Loss(nn.Module):
         elif self.loss_type == 'GIoULoss':
             loss = GIoULoss(pred, target)
         
-        return torch.mean(loss)
+        if self.reduction=='mean':
+            return torch.mean(loss)
+        if self.reduction=='sum':
+            return torch.sum(loss)
+        if self.reduction=='none':
+            return loss
 
 
 
 
 
-
-    
 class IOUSmoothL1Loss(nn.Module):
     '''基于rIoU加权的角度回归SmoothL1损失
-       # 基本思想
-       - SmoothL1提供角度回归的梯度方向, rIoU提供梯度的大小(当角度预测接近边界值时, rIoU很小,能够有效缓解损失函数在边界突变的情况)
+    # 基本思想
+    - SmoothL1提供角度回归的梯度方向, rIoU提供梯度的大小(当角度预测接近边界值时, rIoU很小,能够有效缓解损失函数在边界突变的情况)
     '''
-    def __init__(self, ):
+    def __init__(self):
         super().__init__()
         self.basic_loss = nn.SmoothL1Loss(reduction="none")
         # 防止除以0的情况出现
         self.e = 1e-7
         self.theta_T = 10
 
-
     def computeFactor(self, basic_loss, pred_rboxes, target_rboxes):
         '''factor和rIoU相关
         '''
-        # 将GT的θ转为原始的θ(使用copy是为了避免原地操作):
-        target_rboxes_copy = target_rboxes.clone()
-        # 注意, mmcv.ops.box_iou_rotated接受的角度为弧度制, 需要将角度转化为弧度!!
-        target_rboxes_copy[:, -1] = torch.deg2rad(target_rboxes_copy[:, -1] * 180 - 180)
-        pred_rboxes[:, -1] = torch.deg2rad(pred_rboxes[:, -1])
-        # 将riou作为损失的大小
-        riou = box_iou_rotated(pred_rboxes, target_rboxes_copy, aligned=True, clockwise=True)
-        # 限制riou的范围不超过(1e-7, 1)
-        riou = torch.clamp(riou, min=self.e, max = 1 - 2*self.e)
-        # 将损失归一化, 只保留梯度的方向:
-        norm_factor = basic_loss.detach().abs() + self.e
-        factor = 0.005 * riou.log().abs() / norm_factor
-        '''对于那些GT不是在边界范围内的框(10度之外), 则还是使用原本的SmoothL1的梯度, 不使用IoU'''
-        target_theta = target_rboxes[:,-1] * 180 - 180
-        # 角度超出边界范围10度以上就不使用rIoU因子
-        condition = (target_theta > -180+self.theta_T) & (target_theta < -self.theta_T)
-        factor[condition] = 1.
-        return factor
-    
+        with torch.no_grad():
+            # 将GT的θ转为原始的θ(使用clone是为了避免原地操作):
+            target_rboxes_copy = target_rboxes.clone()
+            # 注意, mmcv.ops.box_iou_rotated接受的角度为弧度制, 需要将角度转化为弧度!!
+            target_rboxes_copy[:, -1] = torch.deg2rad(target_rboxes_copy[:, -1] * 180 - 180)
+            pred_rboxes_copy = pred_rboxes.clone()  # 克隆pred_rboxes以避免就地操作
+            pred_rboxes_copy[:, -1] = torch.deg2rad(pred_rboxes_copy[:, -1] * 180 - 180)
+            # 将riou作为损失的大小
+            riou = box_iou_rotated(pred_rboxes_copy, target_rboxes_copy, aligned=True, clockwise=True)
+            # 限制riou的范围不超过(1e-7, 1)
+            riou = torch.clamp(riou, min=self.e, max=1 - 2 * self.e)
+            # 将损失归一化, 只保留梯度的方向:
+            norm_factor = basic_loss.abs() + self.e
+            factor = 0.005 * riou.log().abs() / norm_factor
+            '''对于那些GT不是在边界范围内的框, 则还是使用原本的SmoothL1的梯度, 不使用IoU'''
+            target_theta = target_rboxes[:, -1] * 180 - 180
+            # 角度超出边界范围10度以上就不使用rIoU因子
+            condition = (target_theta > -180 + self.theta_T) & (target_theta < -self.theta_T)
+            factor[condition] = 1.
+            return factor
 
-    def forward(self, pred_rboxes, target_rboxes, pos_idx):
-        '''pred_rboxes, target_rboxes的框坐标均是基于特征图尺寸下的绝对坐标, 
-           pred_rboxes的θ是原始的θ, target_rboxes的θ是归一化的θ
+    def forward(self, pred_theta, target_theta, pred_hboxes, target_hboxes):
+        '''pred_hboxes, target_hboxes的框坐标均是基于特征图尺寸下的绝对坐标, 
+           pred_theta和target_theta均为归一化的θ
         '''
-        # 取出正样本
-        pos_pred_rboxes = pred_rboxes[pos_idx]
-        pos_target_rboxes =target_rboxes[pos_idx]
-        # 对归一化的θ计算smoothL1损失:
-        basic_loss = self.basic_loss((pos_pred_rboxes[:,-1] + 180) / 180, pos_target_rboxes[:,-1]) 
-        # 计算加权因子
-        factor = self.computeFactor(basic_loss, pos_pred_rboxes, pos_target_rboxes)
+        basic_loss = self.basic_loss(pred_theta, target_theta)
+        pred_rboxes = torch.cat([pred_hboxes, pred_theta.unsqueeze(1)], dim=1)
+        target_rboxes = torch.cat([target_hboxes, target_theta.unsqueeze(1)], dim=1)
+        '''计算加权因子'''
+        factor = self.computeFactor(basic_loss, pred_rboxes, target_rboxes)
         # 在SmoothL1损失的基础之上乘一个加权因子(和IoU有关)
         loss = basic_loss * factor
-        return loss.mean() 
+        return loss.mean()
+    
+
     
 
 
+
+    
 
 
 

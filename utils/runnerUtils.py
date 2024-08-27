@@ -121,7 +121,8 @@ def loadDatasets(mode:str, seed:int, bs:int, num_workers:int, my_dataset:dict):
     # 退而求其次, 用判断条件动态的导入
     if dataset_type == 'YOLOv5Dataset':
         from datasets.YOLOv5Dataset import DOTA2LongSideFormatYOLODataset
-
+    if dataset_type == 'FCOSDataset':
+        from datasets.FCOSDataset import DOTA2LongSideFormatYOLODataset
 
     '''导入验证集'''
     val_ann_dir = my_dataset['val_dataset']['ann_dir']
@@ -190,7 +191,7 @@ def optimSheduler(
         # adam会导致weight_decay错误，使用adam时建议设置为 0
         'adamw' : optim.AdamW(model.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0),
         'adam' : optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.999), weight_decay=0),
-        'sgd'  : optim.SGD(model.parameters(), lr=lr, momentum=0.9, nesterov=True, weight_decay=0),
+        'sgd'  : optim.SGD(model.parameters(), lr=lr, momentum=0.9, nesterov=False, weight_decay=0.0001),
         'sophia' : SophiaG(model.parameters(), lr=lr, betas=(0.965, 0.99), rho = 0.05, weight_decay=0),
     }[optim_type]
     # 使用warmup+余弦退火学习率
@@ -244,7 +245,6 @@ def saveCkpt(
         'sched_state_dict': scheduler.state_dict()
         }
     torch.save(checkpoint_dict, os.path.join(log_dir, f"epoch_{epoch}.pt"))
-    torch.save(model.state_dict(), os.path.join(log_dir, "last.pt"))
     # 如果本次Epoch的val AP50最大，则保存参数(网络权重)
     AP50_list = argsHistory.args_history_dict['val_mAP@.5']
     if epoch == AP50_list.index(max(AP50_list)):

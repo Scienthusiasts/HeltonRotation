@@ -96,7 +96,7 @@ class YOLOv5Head(nn.Module):
             loss_theta = torch.tensor(0).to(x.device)
             if self.reg_loss_type == 'IoUSmoothl1Loss':
                 '''角度回归损失(只对属于正样本的grid计算梯度)'''
-                loss_theta = self.IoUSmoothl1Loss(pred_boxes, y_true[..., :5], pos_idx)
+                loss_theta = self.IoUSmoothl1Loss(theta[pos_idx], y_true[..., 4][pos_idx], pred_boxes[..., :4][pos_idx], y_true[..., :4][pos_idx])
                 '''定位损失(直接用的giou) [bs, 3, w, h](只对属于正样本的grid计算梯度)'''
                 iou = bboxIoU(pred_boxes[..., :-1], y_true[..., :4], GIoU=True).type_as(x).squeeze(-1)
                 loss_box = self.boxLoss(iou, y_true[..., 5])

@@ -526,7 +526,7 @@ def rotatedNMS(prediction, input_shape, conf_thres=0.5, nms_thres=0.4, agnostic=
         cls_id = cls_id[conf_keep]
         # 如果筛选之后没有目标保留，则跳过继续
         if not image_pred.size(0): continue
-        # 将坐标和预测的置信度，类别拼在一起 detections  [num_anchors, 8] (8=cx, cy, wx, hy, theta, obj_score, cls_score, cls_id)
+        # 将坐标和预测的置信度，类别拼在一起 detections  [num_anchors, 8] (8=cx, cy, w, h, theta, obj_score, cls_score, cls_id)
         detections = torch.cat((image_pred[:, :6], cls_score.float(), cls_id.float()), 1)
         if agnostic:
             '''类别无关nms(eval时使用这个一般会掉点)'''

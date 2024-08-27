@@ -4,25 +4,19 @@ import os
 MODE = 'test'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
-PHI = 's'
+BACKBONE = 'resnet50.a1_in1k'
+BACKBONE_CKPT = "F:/Desktop/git/CKPT/HD_ckpt/ckpt/backbone_resnet50.a1_in1k.pt"
+LOADCKPT = f"../CKPT/HD_ckpt/yolov5s/COCO2017/bs16_lr1e-3_mosaic0.5_dropblock0.5/unfreeze/best_AP50.pt"
+TESTCKPT = f"../CKPT/HD_ckpt/yolov5s/COCO2017/bs16_lr1e-3_mosaic0.5_dropblock0.5/unfreeze/best_AP50.pt"
 RESUME = False
 TTA = [[640,640], [832,832], [960,960]]
 TTAOPEN = False
-MASK = [[0,1,2], [3,4,5], [6,7,8]] 
-
-BACKBONE = f'../CKPT/HD_ckpt/ckpt/cspdarknet_{PHI}_v6.1_backbone.pth'
-# l:
-# LOADCKPT = f"F:/Desktop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_ddp/2024-06-28-04-39-46_train/last.pt"
-# TESTCKPT = f"F:/Desktop/git/CKPT/HR_ckpt/yolov5l_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_ddp/2024-06-28-04-39-46_train/last.pt"
-# s:
-LOADCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5s_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval_modifyaug/2024-07-29-17-25-45_train/last.pt"
-TESTCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5s_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval_modifyaug/2024-07-29-17-25-45_train/last.pt"
 
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
 
-# LOADCKPT = 'last.pt'
-# TESTCKPT = 'last.pt'
+LOADCKPT = 'best_AP50.pt'
+TESTCKPT = 'best_AP50.pt'
 
 
 
@@ -30,8 +24,6 @@ onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
 '''DOTA'''
 CATNUMS = 15
 IMGSIZE = [1024, 1024]
-# long_side_format
-ANCHORS = [[24, 12], [42, 18], [77, 24], [79, 63], [113, 31], [167, 108], [186, 34], [296, 127], [558, 183]]
 ann_mode = 'yolo'
 theta_mode = '-180'
 cat_names = ['plane', 'baseball-diamond', 'bridge', 'ground-track-field', 'small-vehicle', 'large-vehicle',
@@ -79,13 +71,11 @@ runner = dict(
         num_workers = 0,
         # 自定义的Dataset:
         my_dataset = dict(
-            path = 'datasets/YOLOv5Dataset.py',
+            path = 'datasets/FCOSDataset.py',
             imgset_file_path = imgset_file_path,
             eval_ann_dir = eval_ann_dir,
             train_dataset = dict(
                 cat_names2id = cat_names2id,
-                anchors = ANCHORS,
-                anchors_mask = MASK, 
                 num_classes = CATNUMS,
                 ann_dir = train_ann_dir, 
                 img_dir = train_img_dir,
@@ -97,8 +87,6 @@ runner = dict(
             ),
             val_dataset = dict(
                 cat_names2id = cat_names2id,
-                anchors = ANCHORS,
-                anchors_mask = MASK, 
                 num_classes = CATNUMS,
                 ann_dir = val_ann_dir, 
                 img_dir = val_img_dir,
@@ -112,32 +100,21 @@ runner = dict(
     ),
 
     model = dict(
-        path = 'models/YOLOv5/YOLOv5.py',
+        path = 'models/FCOS/FCOS.py',
         img_size = IMGSIZE, 
-        anchors = ANCHORS,
-        anchors_mask = MASK, 
         num_classes = CATNUMS, 
-        phi = PHI, 
         loadckpt = LOADCKPT,           
         backbone_name = BACKBONE,
         tta_img_size = TTA,
         backbone = dict(
-            loadckpt=BACKBONE, 
-            pretrain=False, 
-            froze=FROZEBACKBONE,
+            modelType = BACKBONE, 
+            loadckpt = BACKBONE_CKPT, 
+            pretrain = False, 
+            froze = FROZEBACKBONE,
         ),
-        # backbone = dict(
-        #     modelType = 'cspdarknet53.ra_in1k',
-        #     loadckpt = './ckpt/cspdarknet53.ra_in1k.pt',
-        #     pretrain = False,
-        #     froze = FROZEBACKBONE,            
-        # ),
         head = dict(
-            # IoUSmoothl1Loss RotatedIoU1Loss
-            reg_loss_type = "IoUSmoothl1Loss",
-            cls_loss_type = "FocalLoss", 
-            box_loss_type = "GIoULoss", 
-            obj_loss_type = "FocalLoss",
+            num_classes = CATNUMS,
+            in_channel = 256,
         )
     ),
     test = dict(

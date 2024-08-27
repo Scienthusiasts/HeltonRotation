@@ -30,7 +30,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
     '''基于DOTA数据集YOLO格式的长边表示法数据集读取方式, 角度的范围在[-180, 0)
     '''
 
-    def __init__(self, num_classes, cat_names2id, anchors, anchors_mask, ann_dir, img_dir, img_shape=[1024, 1024], input_shape=[800, 800], ann_mode='yolo', theta_mode='-180', trainMode=True):
+    def __init__(self, num_classes, cat_names2id, ann_dir, img_dir, img_shape=[1024, 1024], input_shape=[800, 800], ann_mode='yolo', theta_mode='-180', trainMode=True):
         '''__init__() 为默认构造函数，传入数据集类别（训练或测试），以及数据集路径
 
         Args:
@@ -43,13 +43,13 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         Returns:
             FRCNNDataset
         '''      
+        '''max_boxes是FOCS独有的, 用来padding不同图像间box数量不同的问题'''
+        self.max_boxes = 650
         self.mode = trainMode
         self.ann_mode = ann_mode
         self.theta_mode = theta_mode
         self.num_classes = num_classes
         self.cat_names2id = cat_names2id
-        self.anchors = anchors
-        self.anchors_mask = anchors_mask
         self.img_shape = img_shape
         self.input_shape = input_shape
         self.img_dir = img_dir
@@ -70,15 +70,15 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         '''   
         # 通过index获得图像, 图像的框, 以及框的标签('dota'是获取dota标注格式的8个坐标, 而yolo是获得yolo格式的五参表示法(cls, cx, cy, w, h, theta))
         if self.ann_mode == 'dota':
-            image, boxes, angle, labels = self.getDataByIndex(index)
+            image, boxes, angles, labels = self.getDataByIndex(index)
         elif self.ann_mode == 'yolo':
-            image, boxes, angle, labels = self.getDataByIndexYOLOLongSide(index)
+            image, boxes, angles, labels = self.getDataByIndexYOLOLongSide(index)
         # 数据预处理与增强
-        image, boxes, angle, labels = self.augment(image, boxes, angle, labels)
+        image, boxes, angles, labels = self.augment(image, boxes, angles, labels)
 
-        keep = []
         '''下面的循环是为了剔除掉超出图像边界太多的旋转框'''
-        for id, (instBox, a) in enumerate(zip(boxes, angle)):
+        keep = []
+        for id, (instBox, a) in enumerate(zip(boxes, angles)):
             rect = longsideFormat2OpenCVFormat(instBox[0], instBox[1], instBox[2], instBox[3], a)
             poly = np.float32(cv2.boxPoints(rect))
             # 每个框如果超出图像边界的角点个数在两个及以上, 则舍弃
@@ -87,13 +87,29 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
             if cx_exceed_num>2 or cy_exceed_num>2:
                 continue
             keep.append(id)
-        # cxcywh -> norm(cxcywh)
-        boxes[:, [0, 2]] /= self.img_shape[1]
-        boxes[:, [1, 3]] /= self.img_shape[0]
-        boxes = np.concatenate((boxes, angle.reshape(-1, 1), labels.reshape(-1, 1)), axis=1)[keep]
-        # len(y_true)=3(三个尺度特征), y_true[i] = (3, 20, 20, cat_num+6), (3, 40, 40, cat_num+6), (3, 80, 80, cat_num+6)
-        y_true = YOLOv5BestRatioAssigner(boxes, anchors=np.array(self.anchors), input_shape=self.input_shape, anchors_mask=self.anchors_mask, bbox_attrs=6+self.num_classes)
-        return image.transpose(2,0,1), boxes, y_true
+        # 剔除超出边界太多的框
+        boxes = boxes[keep]
+        angles = angles[keep]
+        labels = labels[keep]
+
+        '''以下专门用来调整到FCOS接受的格式'''
+        # cxcywh -> xywh -> xyxy
+        boxes[:, [0, 1]] -= boxes[:, [2, 3]] / 2
+        boxes[:, [2, 3]] += boxes[:, [0, 1]]
+        # 将box和label的个数都padding到self.max_boxes的大小
+        padding_boxes = np.zeros((self.max_boxes, 4))
+        padding_angles = np.zeros(self.max_boxes)
+        padding_labels = np.zeros(self.max_boxes)
+        # 限制一张图像里的GT数量不超过self.max_boxes:
+        if len(labels) <= self.max_boxes:
+            padding_boxes[:len(boxes)] = boxes
+            padding_angles[:len(angles)] = angles
+            padding_labels[:len(labels)] = labels
+        else:
+            padding_boxes = boxes[:self.max_boxes]
+            padding_angles = angles[:self.max_boxes]
+            padding_labels = labels[:self.max_boxes]
+        return image.transpose(2,0,1), padding_boxes, padding_angles, padding_labels
     
 
 
@@ -256,19 +272,17 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
     # 因此需要自定义的如何组织一个batch里输出的内容
     @staticmethod
     def dataset_collate(batch):
-        images  = []
-        bboxes  = []
-        y_trues = [[] for _ in batch[0][2]]
-        for img, box, y_true in batch:
+        images, bboxes, angles, labels = [], [], [], []
+        for img, box, angle, label in batch:
             images.append(img)
             bboxes.append(box)
-            for i, sub_y_true in enumerate(y_true):
-                y_trues[i].append(sub_y_true)
-                
+            angles.append(angle)
+            labels.append(label)
         images  = torch.from_numpy(np.array(images)).type(torch.FloatTensor)
-        bboxes  = [torch.from_numpy(ann).type(torch.FloatTensor) for ann in bboxes]
-        y_trues = [torch.from_numpy(np.array(ann, np.float32)).type(torch.FloatTensor) for ann in y_trues]
-        return images, bboxes, y_trues
+        bboxes  = torch.from_numpy(np.array(bboxes)).type(torch.FloatTensor)
+        angles  = torch.from_numpy(np.array(angles)).type(torch.FloatTensor)
+        labels = torch.from_numpy(np.array(labels)).type(torch.LongTensor)
+        return images, bboxes, angles, labels
 
 
 
@@ -318,32 +332,33 @@ def visBatch(batch, cat_names, theta_mode, showText=False):
                (255, 255, 0), (147, 116, 116), (0, 0, 255)]
     modify_theta = {'-180':-180.0, '-90':-90.0}[theta_mode]
 
-    images, boxes = batch[0], batch[1]
+    images, boxes, angles, labels = batch[0], batch[1], batch[2], batch[3]
     # 图像均值
     mean = np.array([0.485, 0.456, 0.406]) 
     # 标准差
     std = np.array([[0.229, 0.224, 0.225]]) 
     plt.figure(figsize = (10, 10))
-    for idx, imgBoxLabel in enumerate(zip(images, boxes)):
-        img, box = imgBoxLabel
-        box = box.numpy()
-        # norm(cxcywh) -> cxcywh
-        box[:, [0, 2]] = box[:, [0, 2]] * img.shape[2]
-        box[:, [1, 3]] = box[:, [1, 3]] * img.shape[1]
+    for idx, boxinfo in enumerate(zip(images, boxes, angles, labels)):
+        img, box, angle, label = boxinfo
+        img, box, angle, label = img.numpy(), box.numpy(), angle.numpy(), label.numpy()
+        # xyxy -> xywh -> cxcywh
+        box[:, [2, 3]] -= box[:, [0, 1]]
+        box[:, [0, 1]] += box[:, [2, 3]] / 2
         ax = plt.subplot(8, 8, idx+1)
-        img = img.numpy().transpose((1,2,0))
+        img = img.transpose((1,2,0))
         # 由于在数据预处理时我们对数据进行了标准归一化，可视化的时候需要将其还原
         img = np.clip(img * std + mean, 0, 1)
-        for instBox in box:
-            rect = longsideFormat2OpenCVFormat(instBox[0], instBox[1], instBox[2], instBox[3], -instBox[4]+modify_theta)
+        for instBox, instAngle, instLabel in zip(box, angle, label):
+            if instBox[2] * instBox[3] == 0: continue
+            rect = longsideFormat2OpenCVFormat(instBox[0], instBox[1], instBox[2], instBox[3], -instAngle+modify_theta)
             poly = np.float32(cv2.boxPoints(rect))
 
             # 显示框
-            color = tuple([c/255 for c in cat_color[int(instBox[5])]])
+            color = tuple([c/255 for c in cat_color[int(instLabel)]])
             ax.add_patch(plt.Polygon(poly, edgecolor=color, facecolor='none', linewidth=0.6))
             # 显示类别
             if showText:
-                ax.text(int(instBox[0]), int(instBox[1]), cat_names[int(instBox[5])], fontsize=3, bbox={'facecolor':'white', 'alpha':0.5, 'pad':1})
+                ax.text(int(instBox[0]), int(instBox[1]), cat_names[int(instLabel)], fontsize=3, bbox={'facecolor':'white', 'alpha':0.5, 'pad':1})
         plt.imshow(img)
         # 在图像上方展示对应的标签
         # 取消坐标轴
@@ -382,8 +397,8 @@ def test_dota():
 
 
     '''DOTA-v1.0'''
-    train_img_dir = "E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/images"
-    train_ann_dir = "E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/annfiles"
+    train_img_dir = "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/images"
+    train_ann_dir = "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/annfiles"
     # train_ann_dir = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/yolo_longside_format_annfiles'
     # train_img_dir = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/images'
     cls_num = 15
@@ -410,14 +425,13 @@ def test_dota():
     for step, batch in enumerate(trainDataLoader):
         visBatch(batch, cat_names, theta_mode=theta_mode, showText=False)
         # box[i]: [:, 6], (cx, cy, long_side, short_side, θ, cls_id)
-        images, boxes, y_trues = batch[0], batch[1], batch[2]
+        images, bboxes, angles, labels = batch[0], batch[1], batch[2], batch[3]
         cnt+=1
         # torch.Size([bs, 3, 800, 800])
         print(f'images.shape : {images.shape}')   
-        # 列表形式，因为每个框里的实例数量不一，所以每个列表里的box数量不一
-        print(f'len(boxes) : {len(boxes)}')     
-        # 列表形式，因为每个框里的实例数量不一，所以每个列表里的label数量不一  
-        print(f'len(labels) : {len(y_trues)}')  
+        print(f'bboxes.shape : {bboxes.shape}')     
+        print(f'angles.shape : {angles.shape}')  
+        print(f'labels.shape : {labels.shape}') 
         break
 
 

@@ -38,9 +38,10 @@ class Model(nn.Module):
         self.tta = TTA(tta_img_size=tta_img_size)
         # 是否导入预训练权重
         if loadckpt: 
-            # self.load_state_dict(torch.load(loadckpt))
+            print('ckpt path: ', loadckpt)
+            self.load_state_dict(torch.load(loadckpt))
             # 基于尺寸的匹配方式(能克服局部模块改名加载不了的问题)
-            self = loadWeightsBySizeMatching(self, loadckpt)
+            # self = loadWeightsBySizeMatching(self, loadckpt)
 
 
     def forward(self, x):
@@ -82,7 +83,7 @@ class Model(nn.Module):
         p5_loss = self.p5_head.batchLoss(p5, y_trues[2])
         loss = dict(
             total_loss = p3_loss['total_loss'] + p4_loss['total_loss'] + p5_loss['total_loss'],
-            # theta_loss = p3_loss['theta_loss'] + p4_loss['theta_loss'] + p5_loss['theta_loss'],
+            theta_loss = p3_loss['theta_loss'] + p4_loss['theta_loss'] + p5_loss['theta_loss'],
             box_loss = p3_loss['box_loss'] + p4_loss['box_loss'] + p5_loss['box_loss'],
             cls_loss = p3_loss['cls_loss'] + p4_loss['cls_loss'] + p5_loss['cls_loss'],
             obj_loss = p3_loss['obj_loss'] + p4_loss['obj_loss'] + p5_loss['obj_loss'],
@@ -130,7 +131,7 @@ class Model(nn.Module):
             if len(decode_predicts) == 0 : return [],[],[]
             box_classes = np.array(decode_predicts[0][:, 7], dtype = 'int32')
             box_scores = decode_predicts[0][:, 5] * decode_predicts[0][:, 6]
-            # xyxyθ
+            # xywhθ
             boxes = decode_predicts[0][:, :5]
             '''box坐标映射(有灰边图像里的坐标->原图的坐标)'''
             # W, H 原始图像的大小

@@ -21,6 +21,7 @@ class Transform():
         self.img_shape = img_shape
         self.input_shape = input_shape
         self.dataset_num = dataset_num
+        maxSize = max(self.input_shape[0], self.input_shape[1])
         # 训练时增强
         self.trainTF = A.Compose([
                 # 参数：随机色调、饱和度、值变化
@@ -46,10 +47,10 @@ class Transform():
             )
         # 基本数据预处理
         self.normalTF = A.Compose([
-                # # 最长边限制为imgSize
-                # A.LongestMaxSize(max_size=maxSize),
-                # # 较短的边做padding
-                # A.PadIfNeeded(imgSize[0], imgSize[1], border_mode=cv2.BORDER_CONSTANT, value=[128,128,128]),
+                # 最长边限制为imgSize
+                A.LongestMaxSize(max_size=maxSize),
+                # 较短的边做padding
+                A.PadIfNeeded(self.input_shape[0], self.input_shape[1], border_mode=cv2.BORDER_CONSTANT, value=[128,128,128]),
                 A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ],
             )
