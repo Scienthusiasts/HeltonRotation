@@ -1,7 +1,7 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'test'
+MODE = 'eval'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
 BACKBONE = 'resnet50.a1_in1k'
@@ -15,8 +15,8 @@ TTAOPEN = False
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
 
-LOADCKPT = 'best_AP50.pt'
-TESTCKPT = 'best_AP50.pt'
+LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_sgd_lr0.0025/2024-08-27-10-19-15_train/best_AP50.pt"
+TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_sgd_lr0.0025/2024-08-27-10-19-15_train/best_AP50.pt"
 
 
 
@@ -115,6 +115,8 @@ runner = dict(
         head = dict(
             num_classes = CATNUMS,
             in_channel = 256,
+            # RotatedIoULoss IoUSmoothL1Loss
+            angle_loss_type = 'RotatedIoULoss',
         )
     ),
     test = dict(
@@ -154,7 +156,7 @@ test = dict(
     ckpt_path = TESTCKPT,
     T = 0.25,
     agnostic = False,
-    show_text = False,
+    show_text = True,
     vis_heatmap = True,
     # onnx 权重路径
     onnx_path = os.path.join(onnx_export_dir, onnx_export_name),

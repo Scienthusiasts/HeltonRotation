@@ -30,8 +30,9 @@ class ScaleExp(nn.Module):
 class Head(nn.Module):
     '''FCOS的预测头模块(共享)
     '''
-    def __init__(self, num_classes, in_channel=256):
+    def __init__(self, num_classes, in_channel=256, angle_loss_type='RotatedIoULoss'):
         super(Head,self).__init__()
+        self.angle_loss_type = angle_loss_type
         self.num_classes=num_classes
         cls_branch=[]
         reg_branch=[]
@@ -123,25 +124,42 @@ class Head(nn.Module):
         '''分类损失(所有样本均参与计算)'''
         # 计算batch里每张图片的正样本数量 [bs,]
         num_pos = torch.sum(pos_mask).clamp_(min=1).float()
-        # 生成one_hot标签
+        # 生成one_hot标签(当标签是负样本(-1)时, onehot标签则全为0)
         cls_targets  = (torch.arange(0, self.num_classes, device=cls_targets.device)[None,:] == cls_targets).float()
         cls_loss = self.clsLoss(cls_preds, cls_targets).sum() / torch.sum(num_pos)
         '''centerness损失(正样本才计算)'''
         # 计算BCE损失
         cnt_loss = self.cntLoss(cnt_preds[pos_mask], cnt_targets[pos_mask])
-        '''回归损失(正样本才计算)'''
-        # 计算GIoU loss
-        giou = computeGIoU(reg_preds[pos_mask], reg_targets[pos_mask])
-        reg_loss = (1. - giou).mean()
-        '''角度损失(正样本才计算)'''
-        # 角度为归一化角度
+
+        # 格式调整
+        # 角度均为归一化角度, [-180, 0)->[0, 1)
         angle_preds = torch.sigmoid(angle_preds)
         angle_targets = (angle_targets + 180) / 180
-        # 乘-1是因为将左上距离转换为左上角点(中心是(0,0))
+        # box回归坐标乘-1是因为将左上距离转换为左上角点(中心是(0,0))得到xyxy格式
         reg_preds[:, [0,1]] *= -1
         reg_targets[:, [0,1]] *= -1
-        # self.IoUSmoothl1Loss接受的angle_preds和angle_targets都需要是归一化的角度
-        theta_loss = self.IoUSmoothl1Loss(angle_preds[pos_mask].reshape(-1), angle_targets[pos_mask].reshape(-1), reg_preds[pos_mask], reg_targets[pos_mask])
+        theta_loss = torch.tensor(0).to(cls_preds.device)
+        '''box损失和角度损失单独计算, IoUSmoothL1 Loss'''
+        if self.angle_loss_type == 'IoUSmoothL1Loss':
+            '''回归损失GIoU Loss(正样本才计算)'''
+            # 计算GIoU loss
+            giou = computeGIoU(reg_preds[pos_mask], reg_targets[pos_mask])
+            reg_loss = (1. - giou).mean()
+            '''角度损失(正样本才计算)'''
+            # self.IoUSmoothl1Loss接受的angle_preds和angle_targets都需要是归一化的角度
+            theta_loss = self.IoUSmoothl1Loss(angle_preds[pos_mask].reshape(-1), angle_targets[pos_mask].reshape(-1), reg_preds[pos_mask], reg_targets[pos_mask])
+        '''box损失和角度损失一起计算, RotatedIoU Loss'''
+        if self.angle_loss_type == 'RotatedIoULoss':
+            # xyxy -> xywh
+            reg_preds[:, [2,3]] -= reg_preds[:, [0,1]]
+            reg_targets[:, [2,3]] -= reg_targets[:, [0,1]]
+            # xyxy -> cxcywh
+            reg_preds[:, [0,1]] += reg_preds[:, [2,3]] / 2
+            reg_targets[:, [0,1]] += reg_targets[:, [2,3]] / 2
+            # 将坐标回归结果和角度预测结果拼在一起 [bs * total_anchor_num, 4+1]
+            box_preds = torch.cat((reg_preds, angle_preds), dim=1)
+            box_targets = torch.cat((reg_targets, angle_targets), dim=1)
+            reg_loss, riou = self.RIoULoss(box_preds, box_targets, pos_mask.reshape(1, -1), shape='BC')
 
         '''loss以字典形式回传'''
         loss = dict(

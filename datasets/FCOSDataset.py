@@ -44,7 +44,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
             FRCNNDataset
         '''      
         '''max_boxes是FOCS独有的, 用来padding不同图像间box数量不同的问题'''
-        self.max_boxes = 650
+        self.max_boxes = 400
         self.mode = trainMode
         self.ann_mode = ann_mode
         self.theta_mode = theta_mode

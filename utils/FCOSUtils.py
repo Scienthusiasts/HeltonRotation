@@ -83,9 +83,9 @@ def decode_box(img_shape, input_shape, cls_logits, cnt_logits, reg_preds, angle_
     # 1. 乘积开根号
     # cls_scores = torch.sqrt(cls_scores * cnt_preds.squeeze(dim=-1))
     # 2.centerness开根号
-    cls_scores = cls_scores * torch.sqrt(cnt_preds.squeeze(dim=-1))
+    # cls_scores = cls_scores * torch.sqrt(cnt_preds.squeeze(dim=-1))
     # 3.乘积
-    # cls_scores = cls_scores * cnt_preds.squeeze(dim=-1)
+    cls_scores = cls_scores * cnt_preds.squeeze(dim=-1)
 
     # 通过中心点和网络预测的tlbr获得box的左上角右下角点(原图的未归一化坐标)
     left_top = grids[None, :, :] - reg_preds[..., :2]
@@ -145,9 +145,8 @@ def NMSbyCLS(predicts, nms_thres):
         # 获得某一类下的所有预测结果
         detections_class = predicts[predicts[:, -1] == cat]
         # 使用官方自带的非极大抑制会速度更快一些
-        final_cls_score = detections_class[:, 5] * detections_class[:, 6]
         '''接着筛选掉nms大于nms_thres的预测''' 
-        score, keep = nms_rotated(detections_class[:, :5], final_cls_score, nms_thres)
+        score, keep = nms_rotated(detections_class[:, :5], detections_class[:, 5], nms_thres)
         nms_detections = detections_class[keep]
         # 将类别nms结果记录cls_output
         cls_output = nms_detections if len(cls_output)==0 else torch.cat((cls_output, nms_detections))
@@ -161,9 +160,8 @@ def NMSbyCLS(predicts, nms_thres):
 def NMSbyAll(predicts, nms_thres):
     '''类别无关的nms'''
     # 使用官方自带的非极大抑制会速度更快一些
-    final_cls_score = predicts[:, 5] * predicts[:, 6]
     '''接着筛选掉nms大于nms_thres的预测''' 
-    score, keep = nms_rotated(predicts[:, :5], final_cls_score, nms_thres)
+    score, keep = nms_rotated(predicts[:, :5], predicts[:, 5], nms_thres)
     nms_detections = predicts[keep]
     
     return nms_detections

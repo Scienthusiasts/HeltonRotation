@@ -168,7 +168,7 @@ class RotatedIoULoss(nn.Module):
         self.mode = mode
         self.eps = eps
 
-    def forward(self, pred, target, pos_idx):
+    def forward(self, pred, target, pos_idx, shape='BCWH'):
         """Rotated IoU loss.
 
         Args:
@@ -177,16 +177,22 @@ class RotatedIoULoss(nn.Module):
             target (torch.Tensor): Corresponding gt bboxes, shape (n, 5).
             pos_idx: 正样本的索引
         """
-        
-        # 注意, mmcv.ops.diff_iou_rotated_2d接受的角度为弧度制, 需要将角度转化为弧度!!
-        bs, anchor_num, w, h = target.shape[:-1]
+        # 接受的角度均为归一化角度，这里统一转为原始角度
         target[..., -1] = torch.deg2rad(target[..., -1] * 180 - 180)
-        pred[..., -1] = torch.deg2rad(pred[..., -1])
-        # 注意角度是弧度
-        ious = diff_iou_rotated_2d(pred.reshape(1, -1, 5), target.reshape(1, -1, 5))
-        # reshape回原来的形状
-        ious = ious.reshape(bs, anchor_num, w, h).clamp(min=self.eps, max=1.0-self.eps)
-        pos_ious = ious[pos_idx]
+        pred[..., -1] = torch.deg2rad(pred[..., -1] * 180 - 180)
+        if shape == 'BCWH':
+            # 注意, mmcv.ops.diff_iou_rotated_2d接受的角度为弧度制, 需要将角度转化为弧度!!
+            bs, anchor_num, w, h = target.shape[:-1]
+            # 注意角度是弧度
+            ious = diff_iou_rotated_2d(pred.reshape(1, -1, 5), target.reshape(1, -1, 5))
+            # reshape回原来的形状
+            ious = ious.reshape(bs, anchor_num, w, h).clamp(min=self.eps, max=1.0-self.eps)
+            pos_ious = ious[pos_idx]
+        if shape == 'BC':
+            # 注意角度是弧度
+            ious = diff_iou_rotated_2d(pred.reshape(1, -1, 5), target.reshape(1, -1, 5))
+            ious = ious.clamp(min=self.eps, max=1.0-self.eps)
+            pos_ious = ious[pos_idx]
         # NOTE:用linear
         if self.mode == 'linear':
             loss = 1 - pos_ious

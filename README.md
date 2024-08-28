@@ -57,6 +57,8 @@
 
 基于`DOTA_devkit`提供的接口进行评估(**mAP基于VOC07，NMSIoU阈值0.1(大于过滤)，置信度阈值0.01**)；默认使用warmup+cos学习率衰减策略
 
+**`selective_IoU_smooth_l1`和`IoU_smooth_l1`有什么区别**：IoU_smooth_l1源自论文SCRDet里使用的损失函数，而selective将那些角度不在边界范围内(10度)的角度依然用smoothl1损失，边界范围内才使用IoU_smooth_l1损失
+
 ### YOLOv5_obb
 
 - `DOTA-v1.0` (训练集为train-split，表格为val-split上的评估结果)
@@ -107,7 +109,28 @@ yolov5l_Select_IoUsmooths1_rootfocalloss_epoch101_lr1e-2_sgd_trainval
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--------------------------: | :---: | :---: |
 | 88.26 | 81.62 | 43.97 | 60.45 | 78.99 | 77.09 | 86.71 | 90.82 | 87.08 | 87.24 | 52.79 | 65.46 | 67.96 | 72.22 | 54.52 |          **73.01**           | 40.09 | 41.84 |
 
+### FCOS_obb
 
+FCOS改为旋转框：在regression分支加了角度回归头(角度回归和坐标回归解耦)
+
+- `DOTA-v1.0` (训练集为train-split，表格为val-split上的评估结果)
+
+- image-size=[1024, 1024]
+
+- batch-size=8
+
+- epoch=37
+
+- lr_decay=0.1
+
+| Model | theta_loss_weight |       theta_loss        | optim | max_lr |  mAP50(%)  |
+| :---: | :---------------: | :---------------------: | :---: | :----: | :--------: |
+| FCOS  |         1         | selective_IoU_smooth_l1 |  sgd  | 2.5e-3 |   59.015   |
+| FCOS  |         1         | selective_IoU_smooth_l1 | adamw |  2e-4  |   66.282   |
+| FCOS  |         1         | selective_IoU_smooth_l1 | adamw |  1e-3  |   68.928   |
+| FCOS  |        10         | selective_IoU_smooth_l1 | adamw |  2e-4  |   66.290   |
+| FCOS  |         1         |   Rotated_IoU(linear)   | adamw |  1e-3  | **70.535** |
+| FCOS  |         1         |   Rotated_IoU(linear)   |  sgd  | 2.5e-3 |   61.513   |
 
 ## reference
 
