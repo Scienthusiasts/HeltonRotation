@@ -57,6 +57,8 @@
 
 基于`DOTA_devkit`提供的接口进行评估(**mAP基于VOC07，NMSIoU阈值0.1(大于过滤)，置信度阈值0.01**)；默认使用warmup+cos学习率衰减策略
 
+**`selective_IoU_smooth_l1`和`IoU_smooth_l1`有什么区别**：IoU_smooth_l1源自论文SCRDet里使用的损失函数，而selective将那些角度不在边界范围内(10度)的角度依然用smoothl1损失，边界范围内才使用IoU_smooth_l1损失
+
 ### YOLOv5_obb
 
 - `DOTA-v1.0` (训练集为train-split，表格为val-split上的评估结果)
@@ -65,30 +67,70 @@ image-size=[1024, 1024]
 
 batch-size=16
 
-|        Model         |       theta_loss        | cls_loss   | optim | epoch | max_lr | lr_decay |  mAP50(%)  |
-| :------------------: | :---------------------: | ---------- | :---: | :---: | :----: | :------: | :--------: |
-|       YOLOv5s        |        smooth_l1        | BCE loss   | adamw |  49   |  1e-3  |   0.1    |   58.434   |
-|       YOLOv5s        |        smooth_l1        | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   63.003   |
-|       YOLOv5s        |      IoU_smooth_l1      | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   62.435   |
-|       YOLOv5s        | selective_IoU_smooth_l1 | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   65.427   |
-|       YOLOv5s        | selective_IoU_smooth_l1 | BCE loss   | adamw |  101  |  1e-3  |   0.01   |   64.177   |
-|       YOLOv5s        | selective_IoU_smooth_l1 | focal loss | adamw |  101  |  1e-3  |   0.1    |   65.430   |
-|       YOLOv5s        | selective_IoU_smooth_l1 | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   65.271   |
-| YOLOv5s-COCOPretrain | selective_IoU_smooth_l1 | focal loss | adamw |  101  |  1e-3  |   0.1    |   63.770   |
-| YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | focal loss | adamw |  101  |  1e-3  |   0.1    |   64.565   |
-|       YOLOv5l        |      IoU_smooth_l1      | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   70.192   |
-| YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | focal loss |  sgd  |  101  |  1e-2  |   0.1    | **71.255** |
-| YOLOv5l (train_ddp)  | selective_IoU_smooth_l1 | BCE loss   |  sgd  |  101  |  1e-2  |   0.1    |   69.822   |
+|        Model         |           theta_loss           | cls_loss   | optim | epoch | max_lr | lr_decay |  mAP50(%)  |
+| :------------------: | :----------------------------: | ---------- | :---: | :---: | :----: | :------: | :--------: |
+|       YOLOv5s        |           smooth_l1            | BCE loss   | adamw |  49   |  1e-3  |   0.1    |   58.434   |
+|       YOLOv5s        |           smooth_l1            | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   63.003   |
+|       YOLOv5s        |         IoU_smooth_l1          | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   62.435   |
+|       YOLOv5s        |    selective_IoU_smooth_l1     | BCE loss   | adamw |  101  |  1e-3  |   0.1    |   65.427   |
+|       YOLOv5s        |    selective_IoU_smooth_l1     | BCE loss   | adamw |  101  |  1e-3  |   0.01   |   64.177   |
+|       YOLOv5s        |    selective_IoU_smooth_l1     | focal loss | adamw |  101  |  1e-3  |   0.1    |   65.430   |
+|       YOLOv5s        |         RIoU_loss(box)         | focal loss | adamw |  101  |  1e-3  |   0.1    |   59.724   |
+|       YOLOv5s        |      RIoU_loss(box, obj)       | focal loss | adamw |  101  |  1e-3  |   0.1    |   66.529   |
+|       YOLOv5s        | RIoU_loss_**linear**(box, obj) | focal loss | adamw |  101  |  1e-3  |   0.1    |            |
+|       YOLOv5s        |    selective_IoU_smooth_l1     | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   65.271   |
+|       YOLOv5s        |         RIoU_loss(box)         | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   64.401   |
+|       YOLOv5s        |      RIoU_loss(box, obj)       | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   65.606   |
+| YOLOv5s-COCOPretrain |    selective_IoU_smooth_l1     | focal loss | adamw |  101  |  1e-3  |   0.1    |   63.770   |
+| YOLOv5l (train_ddp)  |    selective_IoU_smooth_l1     | focal loss | adamw |  101  |  1e-3  |   0.1    |   64.565   |
+|       YOLOv5l        |         IoU_smooth_l1          | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   70.192   |
+| YOLOv5l (train_ddp)  |    selective_IoU_smooth_l1     | focal loss |  sgd  |  101  |  1e-2  |   0.1    | **71.255** |
+| YOLOv5l (train_ddp)  |      RIoU_loss(box, obj)       | focal loss |  sgd  |  101  |  1e-2  |   0.1    |   69.234   |
+| YOLOv5l (train_ddp)  |      RIoU_loss(box, obj)       | focal loss | adamw |  101  |  1e-3  |   0.1    |   66.389   |
+| YOLOv5l (train_ddp)  |    selective_IoU_smooth_l1     | BCE loss   |  sgd  |  101  |  1e-2  |   0.1    |   69.822   |
 
 **upload to DOTA server evaluation result (testset):**
 
+yolov5s_IoUsmooths1_rootfocalloss_epoch101_lr1e-2_sgd_trainval
+
+|  PL   |  BD   |  BR   |  GTF  |  SV   |  LV   |  SH   |  TC   |  BC   |  ST   |  SBF  |  RA   |  HA   |  SP   |  HC   | <font color=Red>mAP50</font> | mAP75 |  mAP  |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--------------------------: | :---: | :---: |
+| 87.62 | 75.27 | 31.22 | 58.92 | 76.47 | 73.97 | 80.51 | 90.79 | 64.59 | 86.06 | 29.86 | 59.03 | 56.56 | 68.37 | 42.38 |          **65.44**           | 30.07 | 33.63 |
+
+yolov5s_Select_IoUsmooths1_rootfocalloss_epoch101_lr1e-2_sgd_trainval
+
+|  PL   |  BD   |  BR   |  GTF  |  SV   |  LV   |  SH   |  TC   |  BC   |  ST   |  SBF  |  RA   |  HA   |  SP   |  HC   | <font color=Red>mAP50</font> | mAP75 |  mAP  |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--------------------------: | :---: | :---: |
+| 87.44 | 76.67 | 35.72 | 59.60 | 76.78 | 75.14 | 83.80 | 90.87 | 77.74 | 86.29 | 46.21 | 59.50 | 63.47 | 70.85 | 52.81 |          **69.52**           | 34.28 | 37.12 |
+
 yolov5l_Select_IoUsmooths1_rootfocalloss_epoch101_lr1e-2_sgd_trainval
 
-|  PL   |  BD   |  BR   |  GTF  |  SV   |  LV   |  SH   |  TC   |  BC   |  ST   |  SBF  |  RA   |  HA   |  SP   |  HC   | mAP50 | mAP75 |  mAP  |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| 88.39 | 81.05 | 43.35 | 59.64 | 79.32 | 75.93 | 86.99 | 90.87 | 86.90 | 87.62 | 49.03 | 64.55 | 67.83 | 71.23 | 57.35 | 72.68 | 38.99 | 40.23 |
+|  PL   |  BD   |  BR   |  GTF  |  SV   |  LV   |  SH   |  TC   |  BC   |  ST   |  SBF  |  RA   |  HA   |  SP   |  HC   | <font color=Red>mAP50</font> | mAP75 |  mAP  |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--------------------------: | :---: | :---: |
+| 88.26 | 81.62 | 43.97 | 60.45 | 78.99 | 77.09 | 86.71 | 90.82 | 87.08 | 87.24 | 52.79 | 65.46 | 67.96 | 72.22 | 54.52 |          **73.01**           | 40.09 | 41.84 |
 
+### FCOS_obb
 
+FCOS改为旋转框：在regression分支加了角度回归头(角度回归和坐标回归解耦)
+
+- `DOTA-v1.0` (训练集为train-split，表格为val-split上的评估结果)
+
+- image-size=[1024, 1024]
+
+- batch-size=8
+
+- epoch=37
+
+- lr_decay=0.1
+
+| Model | theta_loss_weight |       theta_loss        | optim | max_lr |  mAP50(%)  |
+| :---: | :---------------: | :---------------------: | :---: | :----: | :--------: |
+| FCOS  |         1         | selective_IoU_smooth_l1 |  sgd  | 2.5e-3 |   59.015   |
+| FCOS  |         1         | selective_IoU_smooth_l1 | adamw |  2e-4  |   66.282   |
+| FCOS  |         1         | selective_IoU_smooth_l1 | adamw |  1e-3  |   68.928   |
+| FCOS  |        10         | selective_IoU_smooth_l1 | adamw |  2e-4  |   66.290   |
+| FCOS  |         1         |   Rotated_IoU(linear)   | adamw |  1e-3  | **70.535** |
+| FCOS  |         1         |   Rotated_IoU(linear)   |  sgd  | 2.5e-3 |   61.513   |
 
 ## reference
 
