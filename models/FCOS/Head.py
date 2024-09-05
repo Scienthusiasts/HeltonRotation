@@ -130,7 +130,6 @@ class Head(nn.Module):
         '''centerness损失(正样本才计算)'''
         # 计算BCE损失
         cnt_loss = self.cntLoss(cnt_preds[pos_mask], cnt_targets[pos_mask])
-
         # 格式调整
         # 角度均为归一化角度, [-180, 0)->[0, 1)
         angle_preds = torch.sigmoid(angle_preds)

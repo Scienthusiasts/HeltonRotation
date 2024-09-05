@@ -1,22 +1,22 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'eval'
+MODE = 'test'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
 BACKBONE = 'resnet50.a1_in1k'
 BACKBONE_CKPT = "F:/Desktop/git/CKPT/HD_ckpt/ckpt/backbone_resnet50.a1_in1k.pt"
-LOADCKPT = f"../CKPT/HD_ckpt/yolov5s/COCO2017/bs16_lr1e-3_mosaic0.5_dropblock0.5/unfreeze/best_AP50.pt"
-TESTCKPT = f"../CKPT/HD_ckpt/yolov5s/COCO2017/bs16_lr1e-3_mosaic0.5_dropblock0.5/unfreeze/best_AP50.pt"
+LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss/2024-08-27-17-21-12_train/last.pt"
+TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss/2024-08-27-17-21-12_train/last.pt"
 RESUME = False
 TTA = [[640,640], [832,832], [960,960]]
 TTAOPEN = False
 
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
-
-LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_sgd_lr0.0025/2024-08-27-10-19-15_train/best_AP50.pt"
-TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_sgd_lr0.0025/2024-08-27-10-19-15_train/best_AP50.pt"
+# best_AP50.pt last.pt
+LOADCKPT = "best_AP50.pt"
+TESTCKPT = "best_AP50.pt"
 
 
 
@@ -37,14 +37,14 @@ cat_names2id = {
 }
 reverse_map = None
 ann_name = {'dota':'annfiles', 'yolo':'yolo_longside_format_annfiles'}[ann_mode]
-train_img_dir = "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/images"
-train_ann_dir = f"F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/{ann_name}"
+train_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/images"
+train_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/{ann_name}"
 # 要推理test测试集时只需修改val_img_dir:
-val_img_dir = "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/images"
-val_ann_dir = f"F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/{ann_name}"
+val_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/images"
+val_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/{ann_name}"
 # 这两个评估时会用到, 其中eval_ann_dir里的txt是基于DOTA八参格式
-imgset_file_path = "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/val_img_name.txt"
-eval_ann_dir = 'F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/annfiles'
+imgset_file_path = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/val_img_name.txt"
+eval_ann_dir = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/annfiles'
 
 
 
@@ -84,6 +84,7 @@ runner = dict(
                 ann_mode = ann_mode,
                 theta_mode = theta_mode,
                 trainMode=True, 
+                filter_empty_gt=True,
             ),
             val_dataset = dict(
                 cat_names2id = cat_names2id,
@@ -94,7 +95,8 @@ runner = dict(
                 img_shape = IMGSIZE,
                 ann_mode = ann_mode,
                 theta_mode = theta_mode,
-                trainMode=False,                 
+                trainMode=False,  
+                filter_empty_gt=False,               
             ),
         ),
     ),
@@ -142,19 +144,14 @@ test = dict(
     # image image_onnx video video_onnx
     mode = 'image',
     # '''DOTA'''
-    # "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/images/P0019__1024__4608___0.png" 
-    # P0027__1024__1322___512.png P0168__1024__1024___512.png P0262__1024__512___0.png P0476__1024__122___205.png 
-    # P0660__1024__136___0.png P0833__1024__617___0.png P0086__1024__0___0.png 
-    # 角度周期性问题：
-    # "F:/Desktop/研究生/datasets/RemoteSensing/DIOR/JPEGImages-trainval/00268.jpg" 417
-    # "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/test/images/P0006__1024__0___505.png" P0016__1024__0___0.png P0006__1024__30___505.png
-    img_path = r"F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/test/images/P0006__1024__0___505.png",
+
+    img_path = r"F:\Desktop\master\datasets\RemoteSensing\DOTA-1.0_ss_size-1024_gap-200\background\result_canvas.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",
     # save_vis_path = './samples/videos/res1.mp4',
     ckpt_path = TESTCKPT,
-    T = 0.25,
+    T = 0.15,
     agnostic = False,
     show_text = True,
     vis_heatmap = True,

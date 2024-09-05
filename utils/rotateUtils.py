@@ -116,7 +116,7 @@ def DOTAtxt2LongSideFormatYOLOtxt(ann_dir:str, tgt_dir:str, cat_names2id:dict, i
                 rect = np.array(openCVFormat2LongsideFormat(c_x, c_y, w, h, -theta))
                 rect[:4] /= img_size
                 cls = cat_names2id[info[8]]
-                boxes_per_img.append(f'{cls} {rect[0]} {rect[1]} {rect[2]} {rect[3]} {rect[4]}/n')
+                boxes_per_img.append(f'{cls} {rect[0]} {rect[1]} {rect[2]} {rect[3]} {rect[4]}\n')
 
         # 逐行写入yolo格式box信息
         with open(tgt_ann_file_path, 'w') as tgtg_ann_file:   
@@ -165,7 +165,7 @@ def DOTAtxt2HBoxYOLOtxt(ann_dir:str, tgt_dir:str, cat_names2id:dict, img_size:in
                 cx = ((tl_x + br_x) / 2) / img_size
                 cy = ((tl_y + br_y) / 2) / img_size
                 if (w*h>0):
-                    boxes_per_img.append(f'{cls} {cx} {cy} {w} {h}/n')
+                    boxes_per_img.append(f'{cls} {cx} {cy} {w} {h}\n')
 
         # 逐行写入yolo格式box信息
         with open(tgt_ann_file_path, 'w') as tgtg_ann_file:   
@@ -387,29 +387,32 @@ def longsideFormat2OpenCVFormat(x_c, y_c, longside, shortside, theta_longside):
 # for test only:
 if __name__ == '__main__':
     '''标注格式转换'''
-    # img_size = 1024
-    # mode = 'val'
-    # ann_dir = f'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/{mode}/yolo_hbox_annfiles'
-    # img_dir = f'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/{mode}/images'
-    # tgt_dir = f'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/{mode}/yolo_hbox_annfiles'
-    # json_path = f'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/coco_ann/hbox_{mode}.json'
-    # cat_names2id = {
-    #     'plane':0, 'baseball-diamond':1, 'bridge':2, 'ground-track-field':3,
-    #     'small-vehicle':4, 'large-vehicle':5, 'ship':6, 'tennis-court':7,
-    #     'basketball-court':8, 'storage-tank':9, 'soccer-ball-field':10, 
-    #     'roundabout':11, 'harbor':12, 'swimming-pool':13, 'helicopter':14
-    # }
-    # # 将DOTA格式的标注txt文件(8参表示法)转为YOLO归一化格式的长边表示法的标注txt文件(5参表示法)
-    # # DOTAtxt2LongSideFormatYOLOtxt(ann_dir, tgt_dir, cat_names2id, img_size)
-    # # 将DOTA格式的标注txt文件(8参表示法)转为YOLO归一化格式的水平框txt文件(4参表示法)
-    # # DOTAtxt2HBoxYOLOtxt(ann_dir, tgt_dir, cat_names2id, img_size)
-    # # 将DOTA格式的标注txt文件(8参表示法)转为COCO格式的json文件(8参表示法)
+    img_size = 1024
+    mode = 'val'
+    img_dir = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/{mode}/images'
+    ann_dir = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/{mode}/annfiles'
+    tgt_dir = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/{mode}/yolo_hbox_annfiles'
+    json_path = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/coco_ann/hbox_{mode}.json'
+    cat_names2id = {
+        'plane':0, 'baseball-diamond':1, 'bridge':2, 'ground-track-field':3,
+        'small-vehicle':4, 'large-vehicle':5, 'ship':6, 'tennis-court':7,
+        'basketball-court':8, 'storage-tank':9, 'soccer-ball-field':10, 
+        'roundabout':11, 'harbor':12, 'swimming-pool':13, 'helicopter':14
+    }
+
+    # 将DOTA格式的标注txt文件(8参表示法)转为YOLO归一化格式的长边表示法的标注txt文件(5参表示法)
+    # DOTAtxt2LongSideFormatYOLOtxt(ann_dir, tgt_dir, cat_names2id, img_size)
+
+    # 将DOTA格式的标注txt文件(8参表示法)转为YOLO归一化格式的水平框txt文件(4参表示法)
+    DOTAtxt2HBoxYOLOtxt(ann_dir, tgt_dir, cat_names2id, img_size)
+
+    # 将DOTA格式的标注txt文件(8参表示法)转为COCO格式的json文件(8参表示法)
     # DOTAtxt2COCOjson(ann_dir, img_dir, cat_names2id, json_path, mode='YOLO', imgFormat='png')
 
 
 
     '''生成DOTA_devkit评估时要用到的img_name_file.txt'''
-    ann_txt_root = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/trainval/annfiles'
-    img_name_file_path = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/trainval_img_name.txt'
-    genDOTAImgNameFile(ann_txt_root, img_name_file_path)
+    # ann_txt_root = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/annfiles'
+    # img_name_file_path = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val_img_name.txt'
+    # genDOTAImgNameFile(ann_txt_root, img_name_file_path)
     

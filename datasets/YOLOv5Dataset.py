@@ -30,7 +30,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
     '''基于DOTA数据集YOLO格式的长边表示法数据集读取方式, 角度的范围在[-180, 0)
     '''
 
-    def __init__(self, num_classes, cat_names2id, anchors, anchors_mask, ann_dir, img_dir, img_shape=[1024, 1024], input_shape=[800, 800], ann_mode='yolo', theta_mode='-180', trainMode=True):
+    def __init__(self, num_classes, cat_names2id, anchors, anchors_mask, ann_dir, img_dir, img_shape=[1024, 1024], input_shape=[800, 800], ann_mode='yolo', theta_mode='-180', trainMode=True, filter_empty_gt=True):
         '''__init__() 为默认构造函数，传入数据集类别（训练或测试），以及数据集路径
 
         Args:
@@ -55,11 +55,30 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         self.img_dir = img_dir
         self.ann_dir = ann_dir
         self.ann_list = os.listdir(ann_dir)
+        if filter_empty_gt:self.filter_empty_gt()
         # 数据集大小
         self.datasetNum = len(self.ann_list)
         # 图像增强变换
         self.tf = Transform('coco', img_shape, input_shape, self.datasetNum)
 
+
+
+    def filter_empty_gt(self):
+        '''训练时过滤掉那些GT为空的文件
+        '''
+        filter_ann_list = []
+        before_filter_img_num = len(self.ann_list)
+        print('filter empty gt...')
+        for ann_name in self.ann_list:
+            ann_path = os.path.join(self.ann_dir, ann_name)
+            # 如果文件大小为 0 字节，则文件为空
+            if os.path.getsize(ann_path) != 0:
+                filter_ann_list.append(ann_name)
+        
+        self.ann_list = filter_ann_list
+        print(f'filter img total num: {before_filter_img_num-len(self.ann_list)}')
+
+        
     def __len__(self):
         '''重载data.Dataset父类方法, 返回数据集大小
         '''

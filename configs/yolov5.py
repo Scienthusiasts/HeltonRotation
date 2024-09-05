@@ -169,7 +169,7 @@ test = dict(
     # 角度周期性问题：
     # "F:/Desktop/研究生/datasets/RemoteSensing/DIOR/JPEGImages-trainval/00268.jpg" 417
     # "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/test/images/P0006__1024__0___505.png" P0016__1024__0___0.png P0006__1024__30___505.png
-    img_path = r"F:\Desktop\研究生\datasets\RemoteSensing\DOTA-1.0_ss_1024\val\images\P1390__1024__512___512.png",
+    img_path = r"F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/test/images/P0006__1024__0___505.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",
@@ -177,7 +177,7 @@ test = dict(
     ckpt_path = TESTCKPT,
     T = 0.25,
     agnostic = False,
-    show_text = True,
+    show_text = False,
     vis_heatmap = True,
     # onnx 权重路径
     onnx_path = os.path.join(onnx_export_dir, onnx_export_name),

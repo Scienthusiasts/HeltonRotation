@@ -92,9 +92,9 @@ def decode_box(img_shape, input_shape, cls_logits, cnt_logits, reg_preds, angle_
     right_bottom = grids[None, :, :] + reg_preds[..., 2:]
     # boxes.shape = [bs, total_anchor_num, 2+2=4]
     boxes = torch.cat([left_top, right_bottom], dim=-1)
-    # # 当输入网络的图像尺寸与默认的img-size不一致时
-    # boxes[..., [0,2]] *= img_shape[0] / input_shape[0]
-    # boxes[..., [0,2]] *= img_shape[0] / input_shape[0]
+    # 将box由xyxy -> cxcywh
+    boxes[..., [2, 3]] -= boxes[..., [0, 1]]
+    boxes[..., [0, 1]] += boxes[..., [2, 3]] / 2
     # 将预测的坐标, 角度, 类别置信度, 类别拼在一起 boxes_score_classes.shape = [bs, total_anchor_num, 4+1+1+1]
     rboxes_score_classes = torch.cat([boxes, angle_preds, torch.unsqueeze(cls_scores.float(),-1), torch.unsqueeze(cls_classes.float(),-1)], dim=-1)
     return rboxes_score_classes
@@ -118,10 +118,6 @@ def rotatedNMS(prediction, conf_thres=0.5, nms_thres=0.4, agnostic=False):
         detections = image_pred[conf_mask]
         # 如果第一轮筛选就没有框,则继续
         if not image_pred.size(0): continue
-
-        # 将box由xyxy -> cxcywh
-        detections[:, [2, 3]] -= detections[:, [0, 1]]
-        detections[:, [0, 1]] += detections[:, [2, 3]] / 2
         if agnostic:
             '''类别无关nms(eval时使用这个一般会掉点)'''
             result = NMSbyAll(detections, nms_thres).cpu().numpy()
@@ -401,30 +397,62 @@ def FCOSAssigner(gt_boxes, gt_angles, classes, input_shape, strides=[8, 16, 32, 
 
 
 
+# def computeGIoU(preds, targets):
+#     '''计算GIoU(preds, targets均是原始的非归一化坐标)
+#     '''
+#     # 左上角和右下角
+#     lt_min = torch.min(preds[:, :2], targets[:, :2])
+#     rb_min = torch.min(preds[:, 2:], targets[:, 2:])
+#     # 重合面积计算
+#     wh_min = (rb_min + lt_min).clamp(min=0)
+#     overlap = wh_min[:, 0] * wh_min[:, 1]#[n]
+#     # 预测框面积和实际框面积计算
+#     area1 = (preds[:, 2] + preds[:, 0]) * (preds[:, 3] + preds[:, 1])
+#     area2 = (targets[:, 2] + targets[:, 0]) * (targets[:, 3] + targets[:, 1])
+#     # 计算交并比
+#     union = (area1 + area2 - overlap)
+#     iou = overlap / (union + 1e-7)
+#     # 计算外包围框
+#     lt_max = torch.max(preds[:, :2],targets[:, :2])
+#     rb_max = torch.max(preds[:, 2:],targets[:, 2:])
+#     wh_max = (rb_max + lt_max).clamp(0)
+#     G_area = wh_max[:, 0] * wh_max[:, 1]
+#     # 计算GIOU
+#     giou = iou - (G_area - union) / G_area.clamp(1e-10)
+#     return giou
+    
+
+
+
+
+
 def computeGIoU(preds, targets):
     '''计算GIoU(preds, targets均是原始的非归一化坐标)
     '''
     # 左上角和右下角
-    lt_min = torch.min(preds[:, :2], targets[:, :2])
-    rb_min = torch.min(preds[:, 2:], targets[:, 2:])
-    # 重合面积计算
-    wh_min = (rb_min + lt_min).clamp(min=0)
-    overlap = wh_min[:, 0] * wh_min[:, 1]#[n]
+    lt_max = torch.max(preds[:, :2], targets[:, :2])  # 左上角最大值
+    rb_min = torch.min(preds[:, 2:], targets[:, 2:])  # 右下角最小值
+    # 重合区域宽高计算
+    wh_min = (rb_min - lt_max).clamp(min=0)
+    overlap = wh_min[:, 0] * wh_min[:, 1]  # [n]
     # 预测框面积和实际框面积计算
-    area1 = (preds[:, 2] + preds[:, 0]) * (preds[:, 3] + preds[:, 1])
-    area2 = (targets[:, 2] + targets[:, 0]) * (targets[:, 3] + targets[:, 1])
+    area1 = (preds[:, 2] - preds[:, 0]) * (preds[:, 3] - preds[:, 1])
+    area2 = (targets[:, 2] - targets[:, 0]) * (targets[:, 3] - targets[:, 1])
     # 计算交并比
     union = (area1 + area2 - overlap)
     iou = overlap / (union + 1e-7)
     # 计算外包围框
-    lt_max = torch.max(preds[:, :2],targets[:, :2])
-    rb_max = torch.max(preds[:, 2:],targets[:, 2:])
-    wh_max = (rb_max + lt_max).clamp(0)
+    lt_min = torch.min(preds[:, :2], targets[:, :2])  # 左上角最小值
+    rb_max = torch.max(preds[:, 2:], targets[:, 2:])  # 右下角最大值
+    wh_max = (rb_max - lt_min).clamp(min=0)
     G_area = wh_max[:, 0] * wh_max[:, 1]
-    # 计算GIOU
-    giou = iou - (G_area - union) / G_area.clamp(1e-10)
+    # 计算GIoU
+    giou = iou - (G_area - union) / G_area.clamp(min=1e-7)
     return giou
-    
+
+
+
+
 
 
 
@@ -437,15 +465,3 @@ def computeGIoU(preds, targets):
 # # for test only:
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-
-    # ann_path = 'E:/datasets/Universal/COCO2017/COCO/annotations/instances_train2017.json'
-    ann_path = 'E:/datasets/RemoteSensing/visdrone2019/annotations/train.json'
-    datas, centers, labels = BBoxesKmeans2Anchors(ann_path, seed=22)
-    print(centers, labels)
-
-    #   绘图
-    for j in range(9):
-        plt.scatter(datas[labels == j][:,0], datas[labels == j][:,1], s=1)
-        plt.scatter(centers[j][0], centers[j][1], marker='x', c='black')
-    plt.savefig("kmeans_for_anchors.jpg", dpi=150)
-    plt.show()

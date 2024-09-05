@@ -105,7 +105,7 @@ class Model(nn.Module):
         with torch.no_grad():
             '''网络推理得到最原始的未解码未nms的结果'''
             cls_logits, cnt_logits, reg_preds, angle_preds = self.forward(tensor_img)
-            # [bs, total_anchor_num, 7(x, y, x, y, theta, score, cls_id)]
+            # [bs, total_anchor_num, 7(cx, cy, w, h, theta, score, cls_id)]
             rboxes_score_classes = decode_box(img_size, [H, W], cls_logits, cnt_logits, reg_preds, angle_preds)
             # 只有一个batch, 所以直接取[0]
             # IoU阈值大于nms_thres的才进行过滤 results: [num_anchors, 7] (7=cx, cy, w, h, theta, cls_score, cls_id)

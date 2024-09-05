@@ -30,7 +30,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
     '''基于DOTA数据集YOLO格式的长边表示法数据集读取方式, 角度的范围在[-180, 0)
     '''
 
-    def __init__(self, num_classes, cat_names2id, ann_dir, img_dir, img_shape=[1024, 1024], input_shape=[800, 800], ann_mode='yolo', theta_mode='-180', trainMode=True):
+    def __init__(self, num_classes, cat_names2id, ann_dir, img_dir, img_shape=[1024, 1024], input_shape=[800, 800], ann_mode='yolo', theta_mode='-180', trainMode=True, filter_empty_gt=True):
         '''__init__() 为默认构造函数，传入数据集类别（训练或测试），以及数据集路径
 
         Args:
@@ -55,10 +55,31 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         self.img_dir = img_dir
         self.ann_dir = ann_dir
         self.ann_list = os.listdir(ann_dir)
+        if filter_empty_gt:self.filter_empty_gt()
         # 数据集大小
         self.datasetNum = len(self.ann_list)
         # 图像增强变换
         self.tf = Transform('coco', img_shape, input_shape, self.datasetNum)
+
+
+    def filter_empty_gt(self):
+        '''训练时过滤掉那些GT为空的文件
+        '''
+        filter_ann_list = []
+        before_filter_img_num = len(self.ann_list)
+        print('filter empty gt...')
+        for ann_name in self.ann_list:
+            ann_path = os.path.join(self.ann_dir, ann_name)
+            # 如果文件大小为 0 字节，则文件为空
+            if os.path.getsize(ann_path) != 0:
+                filter_ann_list.append(ann_name)
+        
+        self.ann_list = filter_ann_list
+        print(f'filter img total num: {before_filter_img_num-len(self.ann_list)}')
+
+
+
+
 
     def __len__(self):
         '''重载data.Dataset父类方法, 返回数据集大小
@@ -387,18 +408,13 @@ def test_dota():
     # 图像尺寸
     imgSize = [1024, 1024]
     input_shape = [1024, 1024]
-    anchors = [[10, 13], [16, 30], [33, 23],
-                [30, 61], [62, 45], [59, 119],
-                [116, 90], [156, 198], [373, 326],
-                ]
-    anchors_mask = [[0,1,2], [3,4,5], [6,7,8]]
     ann_mode = 'dota'
     theta_mode = '-180'
 
 
     '''DOTA-v1.0'''
-    train_img_dir = "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/images"
-    train_ann_dir = "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/annfiles"
+    train_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/images"
+    train_ann_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/annfiles"
     # train_ann_dir = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/yolo_longside_format_annfiles'
     # train_img_dir = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/images'
     cls_num = 15
@@ -411,7 +427,7 @@ def test_dota():
     cat_names = ['PL', 'BD', 'BR', 'GTF', 'SV', 'LV', 'SH', 'TC', 'BC', 'ST', 'SBF', 'RA', 'HB', 'SP', 'HC']
 
     ''' 自定义数据集读取类'''
-    trainDataset = DOTA2LongSideFormatYOLODataset(cls_num, cat_names2id, anchors, anchors_mask, train_ann_dir, train_img_dir, imgSize, input_shape, ann_mode, theta_mode=theta_mode)
+    trainDataset = DOTA2LongSideFormatYOLODataset(cls_num, cat_names2id, train_ann_dir, train_img_dir, imgSize, input_shape, ann_mode, theta_mode=theta_mode, filter_empty_gt=True)
     trainDataLoader = DataLoader(trainDataset, shuffle=True, batch_size=BS, num_workers=2, pin_memory=True,
                                     collate_fn=trainDataset.dataset_collate, worker_init_fn=partial(trainDataset.worker_init_fn, seed=seed))
     # validDataset = DOTA2LongSideFormatDataset(valAnnPath, valImgDir, imgSize, trainMode=False, map=map)
