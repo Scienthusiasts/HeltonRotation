@@ -324,7 +324,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
             bboxes.append(sampled_box)
             angles.append(sampled_angle)
             labels.append(sampled_label)   
-        # np -> tensor     
+        '''np -> tensor   '''  
         images  = torch.from_numpy(np.array(images)).type(torch.FloatTensor)
         bboxes  = torch.from_numpy(np.array(bboxes)).type(torch.FloatTensor)
         angles  = torch.from_numpy(np.array(angles)).type(torch.FloatTensor)

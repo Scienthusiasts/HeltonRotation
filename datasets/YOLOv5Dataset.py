@@ -109,15 +109,19 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
             if cx_exceed_num>2 or cy_exceed_num>2:
                 continue
             keep.append(id)
-        # cxcywh -> norm(cxcywh)
-        boxes[:, [0, 2]] /= self.img_shape[1]
-        boxes[:, [1, 3]] /= self.img_shape[0]
-        boxes = np.concatenate((boxes, angle.reshape(-1, 1), labels.reshape(-1, 1)), axis=1)[keep]
-        # len(y_true)=3(三个尺度特征), y_true[i] = (3, 20, 20, cat_num+6), (3, 40, 40, cat_num+6), (3, 80, 80, cat_num+6)
-        y_true = YOLOv5BestRatioAssigner(boxes, anchors=np.array(self.anchors), input_shape=self.input_shape, anchors_mask=self.anchors_mask, bbox_attrs=6+self.num_classes)
+        # 调整为YOLOv5的格式
+        boxes, y_true = self.switch2YOLOv5Format(boxes[keep], angle[keep], labels[keep])
         return image.transpose(2,0,1), boxes, y_true
     
 
+    def switch2YOLOv5Format(self, boxes, angle, labels):
+        # cxcywh -> norm(cxcywh)
+        boxes[:, [0, 2]] /= self.img_shape[1]
+        boxes[:, [1, 3]] /= self.img_shape[0]
+        boxes = np.concatenate((boxes, angle.reshape(-1, 1), labels.reshape(-1, 1)), axis=1)
+        # len(y_true)=3(三个尺度特征), y_true[i] = (3, 20, 20, cat_num+6), (3, 40, 40, cat_num+6), (3, 80, 80, cat_num+6)
+        y_true = YOLOv5BestRatioAssigner(boxes, anchors=np.array(self.anchors), input_shape=self.input_shape, anchors_mask=self.anchors_mask, bbox_attrs=6+self.num_classes)
+        return boxes, y_true
 
 
     def getDataByIndex(self, index):
@@ -293,18 +297,14 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
             sampled_img = cv2.cvtColor(sampled_img, cv2.COLOR_BGR2RGB)
             # 数据预处理与增强
             sampled_img, sampled_box, sampled_angle, sampled_label = self.augment(sampled_img, sampled_box.astype(np.float64), sampled_angle, sampled_label, mosaic_p=0)
-            # 数据处理
-            # cxcywh -> norm(cxcywh)
-            sampled_box[:, [0, 2]] /= self.img_shape[1]
-            sampled_box[:, [1, 3]] /= self.img_shape[0]
-            sampled_boxes = np.concatenate((sampled_box, sampled_angle.reshape(-1, 1), sampled_label.reshape(-1, 1)), axis=1)
-            # len(y_true)=3(三个尺度特征), y_true[i] = (3, 20, 20, cat_num+6), (3, 40, 40, cat_num+6), (3, 80, 80, cat_num+6)
-            sampled_y_true = YOLOv5BestRatioAssigner(sampled_boxes, anchors=np.array(self.anchors), input_shape=self.input_shape, anchors_mask=self.anchors_mask, bbox_attrs=6+self.num_classes)
+            # 调整为YOLOv5的格式
+            sampled_boxes, sampled_y_true = self.switch2YOLOv5Format(sampled_box, sampled_angle, sampled_label)
+            # 采样的结果添加到batch中
             images.append(sampled_img.transpose(2,0,1))
             bboxes.append(sampled_boxes)
             for i, sub_y_true in enumerate(sampled_y_true):
                 y_trues[i].append(sub_y_true)
-        # np -> tensor  
+        '''np -> tensor ''' 
         images  = torch.from_numpy(np.array(images)).type(torch.FloatTensor)
         bboxes  = [torch.from_numpy(ann).type(torch.FloatTensor) for ann in bboxes]
         y_trues = [torch.from_numpy(np.array(ann, np.float32)).type(torch.FloatTensor) for ann in y_trues]
