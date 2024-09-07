@@ -30,7 +30,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
     '''基于DOTA数据集YOLO格式的长边表示法数据集读取方式, 角度的范围在[-180, 0)
     '''
 
-    def __init__(self, num_classes, cat_names2id, ann_dir, img_dir, img_shape=[1024, 1024], input_shape=[800, 800], ann_mode='yolo', theta_mode='-180', trainMode=True, filter_empty_gt=True):
+    def __init__(self, num_classes, cat_names2id, ann_dir, img_dir, img_shape=[1024, 1024], input_shape=[800, 800], ann_mode='yolo', theta_mode='-180', trainMode=True, filter_empty_gt=True, sample_by_freq=False):
         '''__init__() 为默认构造函数，传入数据集类别（训练或测试），以及数据集路径
 
         Args:
@@ -45,6 +45,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         '''      
         '''max_boxes是FOCS独有的, 用来padding不同图像间box数量不同的问题'''
         self.max_boxes = 400
+        self.sample_by_freq = sample_by_freq
         self.mode = trainMode
         self.ann_mode = ann_mode
         self.theta_mode = theta_mode
@@ -60,6 +61,10 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         self.datasetNum = len(self.ann_list)
         # 图像增强变换
         self.tf = Transform('coco', img_shape, input_shape, self.datasetNum)
+        if self.sample_by_freq:
+            # 统计每个类别下有哪些图片, 并给出每个类别的采样比例(类别数量少就采样概率大一些)
+            self.cat_img_dict, self.sampling_ratio = count_imgs_per_cat(img_dir, ann_dir, num_classes)
+
 
 
     def filter_empty_gt(self):
@@ -114,6 +119,14 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         labels = labels[keep]
 
         '''以下专门用来调整到FCOS接受的格式'''
+        padding_boxes, padding_angles, padding_labels = self.switch2FCOSFormat(boxes, angles, labels)
+        return image.transpose(2,0,1), padding_boxes, padding_angles, padding_labels
+    
+
+
+    def switch2FCOSFormat(self, boxes, angles, labels):
+        '''专门用来调整到FCOS接受的格式
+        '''
         # cxcywh -> xywh -> xyxy
         boxes[:, [0, 1]] -= boxes[:, [2, 3]] / 2
         boxes[:, [2, 3]] += boxes[:, [0, 1]]
@@ -130,8 +143,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
             padding_boxes = boxes[:self.max_boxes]
             padding_angles = angles[:self.max_boxes]
             padding_labels = labels[:self.max_boxes]
-        return image.transpose(2,0,1), padding_boxes, padding_angles, padding_labels
-    
+        return padding_boxes, padding_angles, padding_labels
 
 
 
@@ -196,6 +208,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         with open(ann_path, 'r') as ann_file:
             for line in ann_file.readlines():
                 info = line[:-1].split(' ')
+                # 归一化尺寸变回原图的尺寸
                 cls, cx, cy, w, h, theta = int(info[0]), round(float(info[1])*W), round(float(info[2])*H), round(float(info[3])*W), round(float(info[4])*H), float(info[5])
                 boxes.append([cx, cy, w, h])
                 angle.append(theta)
@@ -211,13 +224,13 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
 
 
 
-    def augment(self, image, boxes, angle, labels):
+    def augment(self, image, boxes, angle, labels, mosaic_p=0.5):
         '''所有数据增强+预处理操作(顺序不能乱!)
         '''   
         if (self.mode):
             # 基本的数据增强
             image, boxes, angle = self.trainAlbumAug(image, boxes, angle)
-            image, boxes, angle, labels, mosaic_flag = self.yoloMosaic4(image, boxes, angle, labels, p=0.5)
+            image, boxes, angle, labels, mosaic_flag = self.yoloMosaic4(image, boxes, angle, labels, p=mosaic_p)
             if mosaic_flag:
                 # 如果经过mosaic增强，则旋转角度小一些(缓解padding里的box去不掉的现象)
                 image, boxes, angle = self.tf.randomRotate(image, boxes, angle, 10, 1, p=0.5)
@@ -291,14 +304,27 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
     # DataLoader中collate_fn参数使用
     # 由于检测数据集每张图像上的目标数量不一
     # 因此需要自定义的如何组织一个batch里输出的内容
-    @staticmethod
-    def dataset_collate(batch):
+    def dataset_collate(self, batch):
         images, bboxes, angles, labels = [], [], [], []
         for img, box, angle, label in batch:
             images.append(img)
             bboxes.append(box)
             angles.append(angle)
             labels.append(label)
+            
+        '''trick, 采样类别数量少的图片, 每个batch采样一次'''
+        if self.sample_by_freq:
+            # 根据训练集每个类别目标出现频率进行随机图片采样(sample_by_freq 目前还是只支持yolo格式处理)
+            sampled_img, sampled_box, sampled_angle, sampled_label = sample_img_by_objfreq(self.img_dir, self.ann_dir, self.num_classes, self.cat_img_dict, self.sampling_ratio)
+            sampled_img = cv2.cvtColor(sampled_img, cv2.COLOR_BGR2RGB)
+            # 数据预处理与增强
+            sampled_img, sampled_box, sampled_angle, sampled_label = self.augment(sampled_img, sampled_box.astype(np.float64), sampled_angle, sampled_label, mosaic_p=0)
+            sampled_box, sampled_angle, sampled_label = self.switch2FCOSFormat(sampled_box.astype(np.float64), sampled_angle, sampled_label)
+            images.append(sampled_img.transpose(2,0,1))
+            bboxes.append(sampled_box)
+            angles.append(sampled_angle)
+            labels.append(sampled_label)   
+        # np -> tensor     
         images  = torch.from_numpy(np.array(images)).type(torch.FloatTensor)
         bboxes  = torch.from_numpy(np.array(bboxes)).type(torch.FloatTensor)
         angles  = torch.from_numpy(np.array(angles)).type(torch.FloatTensor)
@@ -401,22 +427,24 @@ def visBatch(batch, cat_names, theta_mode, showText=False):
 
 def test_dota():
     # 固定随机种子 122
-    seed = 123
+    seed = 11
     seed_everything(seed)
-    # BatcchSize
+    sample_by_freq=True
+    # BatchSize
     BS = 64
+    BS = BS - 1 if sample_by_freq else BS
     # 图像尺寸
     imgSize = [1024, 1024]
     input_shape = [1024, 1024]
-    ann_mode = 'dota'
+    ann_mode = 'yolo'
     theta_mode = '-180'
 
 
     '''DOTA-v1.0'''
-    train_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/images"
-    train_ann_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/annfiles"
-    # train_ann_dir = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/yolo_longside_format_annfiles'
-    # train_img_dir = 'E:/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/images'
+    # train_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/images"
+    # train_ann_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/annfiles"
+    train_ann_dir = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/train/yolo_longside_format_annfiles'
+    train_img_dir = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/train/images'
     cls_num = 15
     cat_names2id = {
         'plane':0, 'baseball-diamond':1, 'bridge':2, 'ground-track-field':3,
@@ -427,7 +455,7 @@ def test_dota():
     cat_names = ['PL', 'BD', 'BR', 'GTF', 'SV', 'LV', 'SH', 'TC', 'BC', 'ST', 'SBF', 'RA', 'HB', 'SP', 'HC']
 
     ''' 自定义数据集读取类'''
-    trainDataset = DOTA2LongSideFormatYOLODataset(cls_num, cat_names2id, train_ann_dir, train_img_dir, imgSize, input_shape, ann_mode, theta_mode=theta_mode, filter_empty_gt=True)
+    trainDataset = DOTA2LongSideFormatYOLODataset(cls_num, cat_names2id, train_ann_dir, train_img_dir, imgSize, input_shape, ann_mode, theta_mode=theta_mode, filter_empty_gt=True, sample_by_freq=True)
     trainDataLoader = DataLoader(trainDataset, shuffle=True, batch_size=BS, num_workers=2, pin_memory=True,
                                     collate_fn=trainDataset.dataset_collate, worker_init_fn=partial(trainDataset.worker_init_fn, seed=seed))
     # validDataset = DOTA2LongSideFormatDataset(valAnnPath, valImgDir, imgSize, trainMode=False, map=map)

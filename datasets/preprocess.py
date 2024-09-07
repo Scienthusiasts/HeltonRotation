@@ -1,8 +1,10 @@
 import albumentations as A
+from PIL import Image
 import numpy as np
 import random
+import json
 import cv2
-
+import os
 
 
 
@@ -187,3 +189,128 @@ class Transform():
             return mosaic_img, bboxes, angles, labels
  
         return images, bboxes, angles, labels
+    
+
+
+
+
+
+
+
+
+
+
+
+
+def count_imgs_per_cat(img_dir, ann_dir, cat_num):
+    """统计每个类别下有哪些图片, 并给出每个类别的采样比例(类别数量少就采样概率大一些)
+    Args:
+        - img_dir:        图像根目录
+        - ann_dir:        标签根目录
+        - cat_num:        数据集类别数
+
+    Retuens:
+        - cat_img_dict:   存储对应类别在哪些图像中出现
+        - sampling_ratio: 每个类别的采样比例(根据训练集中的出现比例)     
+    """
+    # cat_img_dict用于存储对应类别在哪些图像中出现
+    cat_img_dict = {i:[] for i in range(cat_num)}
+    # cat_num_dict用于存储对应类别共有多少个目标
+    ratio_per_cat = np.array([0 for i in range(cat_num)])
+    # 遍历所有图像
+    for img_name in os.listdir(img_dir):
+        ann_name = img_name.replace('png', 'txt')
+        img_path = os.path.join(img_dir, img_name)
+        ann_path = os.path.join(ann_dir, ann_name)
+        img_cats = set()
+        # 统计图像中出现的类别数(不重复)和对应类别下目标个数
+        with open(ann_path, 'r') as txt:
+            for line in txt.readlines():
+                cat_id = int(line.split(' ')[0])
+                img_cats.add(cat_id)
+                ratio_per_cat[cat_id] += 1
+        # 如果当前图像包含某个类别，则将图像添加至对应类别的list中
+        for cat_id in img_cats:
+            cat_img_dict[cat_id].append(img_name)
+    # 根据每个类别下的目标占比计算采样比率
+    sampling_ratio = 1 / ratio_per_cat * sum(ratio_per_cat)
+    sampling_ratio /= sum(sampling_ratio)
+    return cat_img_dict, sampling_ratio
+
+
+def sample_img(cat_num, cat_img_dict, ratio_per_cat, sampled_num):
+    """根据采样比例ratio_per_cat随机采样某个类别下的某张图片
+    """
+    cat = np.arange(cat_num)
+    sampled_cat = np.random.choice(cat, size=sampled_num, p=ratio_per_cat)[0]
+    catimg_list = cat_img_dict[sampled_cat]
+    rand_img_idx = np.random.randint(0, len(catimg_list))
+    return sampled_cat, catimg_list[rand_img_idx]
+
+
+def mask_obb(img, mask):
+    """在给定的图像上, 使用 mask 中的旋转矩形信息将相应区域填充为灰色。
+    Args:
+        - img:  原始图像, numpy 数组
+        - mask: 旋转矩形信息, 形状为 [n, 5] 的 numpy 数组, 5 代表 (cx, cy, w, h, theta)
+        
+    Returns:
+        - img:  修改后的图像, 旋转矩形区域被填充为灰色
+    """
+    # 定义填充灰色
+    gray_color = (128, 128, 128)  
+    for rect_params in mask:
+        cx, cy, w, h, theta = rect_params
+        # 创建旋转矩形 (cx, cy) 为中心, (w, h) 为宽高, theta 为旋转角度
+        rect = ((cx, cy), (w, h), -theta)
+        # 获取旋转矩形的四个顶点
+        box = cv2.boxPoints(rect).astype(int)
+        # 填充旋转矩形区域为灰色
+        cv2.fillConvexPoly(img, box, gray_color)
+
+    return img
+
+
+def sample_img_by_objfreq(img_dir, ann_dir, cat_num, cat_img_dict, sampling_ratio):
+    """根据训练集每个类别目标出现频率进行随机图片采样
+    Args:
+        - img_dir:        图像根目录
+        - ann_dir:        标签根目录
+        - cat_num:        数据集类别数
+        - cat_img_dict:   存储对应类别在哪些图像中出现
+        - sampling_ratio: 每个类别的采样比例(根据训练集中的出现比例) 
+
+    Retuens:
+        - sampled_img: 采样的图片
+        - keep_box:    保留的目标框尺寸 [keep_num, 4]
+        - keep_angle:  保留的目标框角度 [keep_num, ]
+        - keep_label:  保留的目标框类别 [keep_num, ]
+    """
+    # 根据采样比例sampling_ratio随机采样某个类别和对应类别下的某张图片
+    target_cat, sampled_img_name = sample_img(cat_num, cat_img_dict, sampling_ratio, sampled_num=1)
+    # 获得采样图像路径和对应的标签路径
+    sampled_img_path = os.path.join(img_dir, sampled_img_name)
+    sampled_ann_path = os.path.join(ann_dir, sampled_img_name.replace('png', 'txt'))
+    # 图像里保留的目标为采样的类别+数量最少的6个类别
+    small_cat_id = np.argsort(sampling_ratio)[-6:]
+    sample_cat_id = set(np.append(small_cat_id, target_cat))
+
+    sampled_img = cv2.imread(sampled_img_path)
+    W, H = sampled_img.shape[:-1]
+    mask, keep_box, keep_angle, keep_label = [], [], [], []
+    with open(sampled_ann_path, 'r') as txt:
+        for line in txt.readlines():
+            info = line.split(' ')
+            # 归一化尺寸变回原图的尺寸
+            cls, cx, cy, w, h, theta = int(info[0]), round(float(info[1])*W), round(float(info[2])*H), \
+                round(float(info[3])*W), round(float(info[4])*H), float(info[5])
+            # 如果图像中存在保留类别之外的其他类别，则对这些目标进行mask
+            if cls not in sample_cat_id:
+                mask.append([cx, cy, w, h, theta])
+            else:
+                keep_box.append([cx, cy, w, h])
+                keep_angle.append(theta)
+                keep_label.append(cls)
+    # mask操作
+    sampled_img = mask_obb(sampled_img, np.array(mask))
+    return sampled_img, np.array(keep_box), np.array(keep_angle), np.array(keep_label)

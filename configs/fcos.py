@@ -1,7 +1,7 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'test'
+MODE = 'train'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
 BACKBONE = 'resnet50.a1_in1k'
@@ -37,14 +37,14 @@ cat_names2id = {
 }
 reverse_map = None
 ann_name = {'dota':'annfiles', 'yolo':'yolo_longside_format_annfiles'}[ann_mode]
-train_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/images"
-train_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/{ann_name}"
+train_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/train/images"
+train_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/train/{ann_name}"
 # 要推理test测试集时只需修改val_img_dir:
-val_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/images"
-val_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/{ann_name}"
+val_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/images"
+val_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/{ann_name}"
 # 这两个评估时会用到, 其中eval_ann_dir里的txt是基于DOTA八参格式
-imgset_file_path = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/val_img_name.txt"
-eval_ann_dir = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/annfiles'
+imgset_file_path = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val_img_name.txt"
+eval_ann_dir = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/annfiles'
 
 
 
@@ -74,7 +74,7 @@ runner = dict(
             path = 'datasets/FCOSDataset.py',
             imgset_file_path = imgset_file_path,
             eval_ann_dir = eval_ann_dir,
-            train_dataset = dict(
+            train_dataset = dict( 
                 cat_names2id = cat_names2id,
                 num_classes = CATNUMS,
                 ann_dir = train_ann_dir, 
@@ -85,8 +85,10 @@ runner = dict(
                 theta_mode = theta_mode,
                 trainMode=True, 
                 filter_empty_gt=True,
+                # sample_by_freq 目前还是只支持yolo格式处理
+                sample_by_freq = True,
             ),
-            val_dataset = dict(
+            val_dataset = dict( 
                 cat_names2id = cat_names2id,
                 num_classes = CATNUMS,
                 ann_dir = val_ann_dir, 
@@ -96,7 +98,9 @@ runner = dict(
                 ann_mode = ann_mode,
                 theta_mode = theta_mode,
                 trainMode=False,  
-                filter_empty_gt=False,               
+                filter_empty_gt=False,  
+                # sample_by_freq 目前还是只支持yolo格式处理 
+                sample_by_freq = False,            
             ),
         ),
     ),

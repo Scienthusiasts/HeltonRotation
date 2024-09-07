@@ -133,12 +133,12 @@ def loadDatasets(mode:str, seed:int, bs:int, num_workers:int, my_dataset:dict):
     val_data = DOTA2LongSideFormatYOLODataset(**my_dataset['val_dataset'])
     if mode != 'train_ddp':
         val_data_loader = DataLoader(val_data, shuffle=False, batch_size=bs, num_workers=num_workers, pin_memory=True, 
-                                    collate_fn=DOTA2LongSideFormatYOLODataset.dataset_collate, worker_init_fn=partial(DOTA2LongSideFormatYOLODataset.worker_init_fn, seed=seed)) 
+                                    collate_fn=val_data.dataset_collate, worker_init_fn=partial(DOTA2LongSideFormatYOLODataset.worker_init_fn, seed=seed)) 
     # NOTE: 多卡 
     else:
         val_sampler = DistributedSampler(val_data)
         val_data_loader = DataLoader(val_data, sampler=val_sampler, batch_size=bs, num_workers=num_workers, pin_memory=True, 
-                                    collate_fn=DOTA2LongSideFormatYOLODataset.dataset_collate, worker_init_fn=partial(DOTA2LongSideFormatYOLODataset.worker_init_fn, seed=seed))  
+                                    collate_fn=val_data.dataset_collate, worker_init_fn=partial(DOTA2LongSideFormatYOLODataset.worker_init_fn, seed=seed))  
     if mode == 'eval':
         return None, None, val_ann_dir, val_img_dir, val_data, val_data_loader, imgset_file_path, eval_ann_dir
     
@@ -149,15 +149,16 @@ def loadDatasets(mode:str, seed:int, bs:int, num_workers:int, my_dataset:dict):
             rank = 0 
         else:
             rank = dist.get_rank()
-
+        # trick, 采样类别数量少的图片, 每个batch采样一次
+        bs = bs - 1 if my_dataset['train_dataset']['sample_by_freq'] else bs
         train_data = DOTA2LongSideFormatYOLODataset(**my_dataset['train_dataset'])
         train_data_loader = DataLoader(train_data, shuffle=True, batch_size=bs, num_workers=num_workers, pin_memory=True,
-                                        collate_fn=DOTA2LongSideFormatYOLODataset.dataset_collate, worker_init_fn=partial(DOTA2LongSideFormatYOLODataset.worker_init_fn, seed=seed, rank=rank))
+                                        collate_fn=train_data.dataset_collate, worker_init_fn=partial(DOTA2LongSideFormatYOLODataset.worker_init_fn, seed=seed, rank=rank))
         # NOTE: 多卡
         if mode == 'train_ddp':
             train_sampler = DistributedSampler(train_data)
             train_data_loader = DataLoader(train_data, sampler=train_sampler, batch_size=bs, num_workers=num_workers, pin_memory=True, 
-                                        collate_fn=DOTA2LongSideFormatYOLODataset.dataset_collate, worker_init_fn=partial(DOTA2LongSideFormatYOLODataset.worker_init_fn, seed=seed, rank=rank))  
+                                        collate_fn=train_data.dataset_collate, worker_init_fn=partial(DOTA2LongSideFormatYOLODataset.worker_init_fn, seed=seed, rank=rank))  
         return train_data, train_data_loader, val_ann_dir, val_img_dir, val_data, val_data_loader, imgset_file_path, eval_ann_dir
 
 

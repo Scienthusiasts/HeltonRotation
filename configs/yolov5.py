@@ -1,7 +1,7 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'eval'
+MODE = 'train'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
 PHI = 's'
@@ -45,14 +45,14 @@ cat_names2id = {
 }
 reverse_map = None
 ann_name = {'dota':'annfiles', 'yolo':'yolo_longside_format_annfiles'}[ann_mode]
-train_img_dir = "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/images"
-train_ann_dir = f"F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/train/{ann_name}"
+train_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/train/images"
+train_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/train/{ann_name}"
 # 要推理test测试集时只需修改val_img_dir:
-val_img_dir = "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/images"
-val_ann_dir = f"F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/{ann_name}"
+val_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/images"
+val_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/{ann_name}"
 # 这两个评估时会用到, 其中eval_ann_dir里的txt是基于DOTA八参格式
-imgset_file_path = "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/val_img_name.txt"
-eval_ann_dir = 'F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/annfiles'
+imgset_file_path = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val_img_name.txt"
+eval_ann_dir = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/annfiles'
 
 
 
@@ -94,6 +94,8 @@ runner = dict(
                 ann_mode = ann_mode,
                 theta_mode = theta_mode,
                 trainMode=True, 
+                # sample_by_freq 目前还是只支持yolo格式处理
+                sample_by_freq = True,
             ),
             val_dataset = dict(
                 cat_names2id = cat_names2id,
@@ -106,7 +108,9 @@ runner = dict(
                 img_shape = IMGSIZE,
                 ann_mode = ann_mode,
                 theta_mode = theta_mode,
-                trainMode=False,                 
+                trainMode=False,     
+                # sample_by_freq 目前还是只支持yolo格式处理
+                sample_by_freq = True,            
             ),
         ),
     ),
@@ -163,13 +167,13 @@ test = dict(
     # image image_onnx video video_onnx
     mode = 'image',
     # '''DOTA'''
-    # "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/val/images/P0019__1024__4608___0.png" 
+    # "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/images/P0019__1024__4608___0.png" 
     # P0027__1024__1322___512.png P0168__1024__1024___512.png P0262__1024__512___0.png P0476__1024__122___205.png 
     # P0660__1024__136___0.png P0833__1024__617___0.png P0086__1024__0___0.png 
     # 角度周期性问题：
     # "F:/Desktop/研究生/datasets/RemoteSensing/DIOR/JPEGImages-trainval/00268.jpg" 417
-    # "F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/test/images/P0006__1024__0___505.png" P0016__1024__0___0.png P0006__1024__30___505.png
-    img_path = r"F:/Desktop/研究生/datasets/RemoteSensing/DOTA-1.0_ss_1024/test/images/P0006__1024__0___505.png",
+    # "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/test/images/P0006__1024__0___505.png" P0016__1024__0___0.png P0006__1024__30___505.png
+    img_path = r"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/test/images/P0006__1024__0___505.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",
