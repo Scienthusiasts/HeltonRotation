@@ -1,7 +1,7 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'train'
+MODE = 'test'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
 BACKBONE = 'resnet50.a1_in1k'
@@ -15,8 +15,8 @@ TTAOPEN = False
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
 # best_AP50.pt last.pt
-LOADCKPT = "best_AP50.pt"
-TESTCKPT = "best_AP50.pt"
+LOADCKPT = r"F:\Desktop\git\CKPT\HR_ckpt\rotated_fcos\theta-weight1_adamw_lr1e-3_rotatediouloss\2024-09-05-01-50-16_train\best_AP50.pt"
+TESTCKPT = r"F:\Desktop\git\CKPT\HR_ckpt\rotated_fcos\theta-weight1_adamw_lr1e-3_rotatediouloss\2024-09-05-01-50-16_train\best_AP50.pt"
 
 
 
@@ -149,7 +149,7 @@ test = dict(
     mode = 'image',
     # '''DOTA'''
 
-    img_path = r"F:\Desktop\master\datasets\RemoteSensing\DOTA-1.0_ss_size-1024_gap-200\background\result_canvas.png",
+    img_path = r"samples\dota1.0\P1001__1024__2472___337.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",
@@ -157,7 +157,7 @@ test = dict(
     ckpt_path = TESTCKPT,
     T = 0.15,
     agnostic = False,
-    show_text = True,
+    show_text = False,
     vis_heatmap = True,
     # onnx 权重路径
     onnx_path = os.path.join(onnx_export_dir, onnx_export_name),
@@ -182,3 +182,6 @@ export = dict(
         }
     )
 )
+
+
+

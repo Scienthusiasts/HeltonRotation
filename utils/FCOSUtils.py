@@ -206,13 +206,19 @@ def vis_FCOS_heatmap(cls_logits, cnt_logits, ori_shape, input_shape, image, box_
     # 对三个尺度特征图分别提取 obj heatmap
     cls_num = cls_logits[0].shape[1]
     color = [np.random.random((1, 3)) * 0.7 + 0.3 for i in range(cls_num)]
-    for layer, cnt_logit in enumerate(cnt_logits):
-        cnt_logit = cnt_logit.cpu()
+    for layer in range(len(cnt_logits)):
+        cnt_logit = cnt_logits[layer].cpu()
+        cls_logit = cls_logits[layer].cpu()
         b, c, h, w = cnt_logit.shape
         # [bs=1,1,w,h] -> [w,h]
         cnt_logit = cnt_logit[0,0,...]
+        # [bs=1,w,h] -> [w,h]
+        cls_logit = cls_logit[0,...]
         '''提取centerness-map(类别无关的obj置信度)'''
-        saveVisCenternessMap(cnt_logit, image, W, H, layer, input_shape, cut_region, save_vis_path)
+        # saveVisCenternessMap(cnt_logit, image, W, H, layer, input_shape, cut_region, save_vis_path)
+        '''提取类别最大置信度heatmap(类别最大置信度*centerness)'''
+        saveVisScoreMap(cnt_logit, cls_logit, image, W, H, layer, input_shape, cut_region, save_vis_path)
+
 
 
 def saveVisCenternessMap(cnt_logit, image, W, H, layer, input_shape, cut_region, save_vis_path):
@@ -220,6 +226,25 @@ def saveVisCenternessMap(cnt_logit, image, W, H, layer, input_shape, cut_region,
     '''
     # 取objmap, 并执行sigmoid将value归一化到(0,1)之间
     heat_map = F.sigmoid(cnt_logit).numpy()
+    # resize到网络接受的输入尺寸
+    heat_map = cv2.resize(heat_map, (input_shape[0], input_shape[1]))
+    heatmap2Img(heat_map, image, W, H, layer, input_shape, cut_region, save_vis_path)
+
+
+def saveVisScoreMap(cnt_logit, cls_logit, image, W, H, layer, input_shape, cut_region, save_vis_path):
+    '''提取类别最大置信度heatmap(类别最大置信度*centerness)
+    '''
+    # 取objmap, 并执行sigmoid将value归一化到(0,1)之间
+    centerness_map = F.sigmoid(cnt_logit).numpy()
+    cat_score_map = F.sigmoid(cls_logit).numpy()
+    cat_score_map = np.max(cat_score_map, axis=0)
+    heat_map = centerness_map * cat_score_map
+    heatmap2Img(heat_map, image, W, H, layer, input_shape, cut_region, save_vis_path)
+
+
+
+def heatmap2Img(heat_map, image, W, H, layer, input_shape, cut_region, save_vis_path):
+    '''heatmap -> img -> save'''
     # resize到网络接受的输入尺寸
     heat_map = cv2.resize(heat_map, (input_shape[0], input_shape[1]))
     # 去除padding的灰边
@@ -236,13 +261,6 @@ def saveVisCenternessMap(cnt_logit, image, W, H, layer, input_shape, cut_region,
         save_dir, save_name = os.path.split(save_vis_path)
         save_name = f'heatmap{layer}_' + save_name
         cv2.imwrite(os.path.join(save_dir, save_name), heatmap_img)
-
-
-
-
-
-
-
 
 
 
