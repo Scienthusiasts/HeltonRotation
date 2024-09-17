@@ -335,7 +335,7 @@ def FCOSAssigner(gt_boxes, gt_angles, classes, input_shape, strides=[8, 16, 32, 
         '''由于上面是计算了每个anchor-point相比于每个gt的两两偏移量, 因此会有很多冗余, 下面进行过滤'''
         # 1.mask_in_gtboxes筛选那些落在真实框内的特征点
         mask_in_gtboxes = off_min > 0
-        # 2.mask_in_level筛选哪些gt适合在当前特征层进行检测
+        # 2.mask_in_level筛选哪些gt适合在当前特征层进行检测(偏移量即尺寸不大不小)
         mask_in_level = (off_max > limit_range[0]) & (off_max <= limit_range[1])
         # 在radiu半径圆内的grid作为正样本
         radiu       = stride * sample_radiu_ratio
@@ -353,7 +353,7 @@ def FCOSAssigner(gt_boxes, gt_angles, classes, input_shape, strides=[8, 16, 32, 
         c_off_max    = torch.max(c_ltrb_off,dim=-1)[0]
         # 3.正样本与GT的中心点距离小于radiu
         mask_center = c_off_max < radiu
-        # 联合考虑条件1.2.3, 筛选出正样本, 得到pos_mask为bool型
+        # 联合考虑条件1.2.3, 筛选出正样本(离GT中点的一定正方形区域内且在GT框内部, 且尺寸符合当前特征层), 得到pos_mask为bool型
         pos_mask = mask_in_gtboxes & mask_in_level & mask_center
         # 将所有不是正样本的特征点，面积设成max [bs, h*w, gt_nums](其实就是标记为负样本)
         areas[~pos_mask] = 99999999
@@ -380,7 +380,7 @@ def FCOSAssigner(gt_boxes, gt_angles, classes, input_shape, strides=[8, 16, 32, 
         left_right_max = torch.max(reg_targets[..., 0], reg_targets[..., 2])
         top_bottom_min = torch.min(reg_targets[..., 1], reg_targets[..., 3])
         top_bottom_max = torch.max(reg_targets[..., 1], reg_targets[..., 3])
-        # 计算centerncss [bs, h*w, 1]
+        '''计算centerncss [bs, h*w, 1]'''
         cnt_targets= ((left_right_min * top_bottom_min) / (left_right_max * top_bottom_max + 1e-10)).sqrt().unsqueeze(dim=-1)
         # 排查形状是否正确
         assert reg_targets.shape == (bs,h_mul_w,4)
@@ -414,31 +414,6 @@ def FCOSAssigner(gt_boxes, gt_angles, classes, input_shape, strides=[8, 16, 32, 
 
 
 
-
-# def computeGIoU(preds, targets):
-#     '''计算GIoU(preds, targets均是原始的非归一化坐标)
-#     '''
-#     # 左上角和右下角
-#     lt_min = torch.min(preds[:, :2], targets[:, :2])
-#     rb_min = torch.min(preds[:, 2:], targets[:, 2:])
-#     # 重合面积计算
-#     wh_min = (rb_min + lt_min).clamp(min=0)
-#     overlap = wh_min[:, 0] * wh_min[:, 1]#[n]
-#     # 预测框面积和实际框面积计算
-#     area1 = (preds[:, 2] + preds[:, 0]) * (preds[:, 3] + preds[:, 1])
-#     area2 = (targets[:, 2] + targets[:, 0]) * (targets[:, 3] + targets[:, 1])
-#     # 计算交并比
-#     union = (area1 + area2 - overlap)
-#     iou = overlap / (union + 1e-7)
-#     # 计算外包围框
-#     lt_max = torch.max(preds[:, :2],targets[:, :2])
-#     rb_max = torch.max(preds[:, 2:],targets[:, 2:])
-#     wh_max = (rb_max + lt_max).clamp(0)
-#     G_area = wh_max[:, 0] * wh_max[:, 1]
-#     # 计算GIOU
-#     giou = iou - (G_area - union) / G_area.clamp(1e-10)
-#     return giou
-    
 
 
 

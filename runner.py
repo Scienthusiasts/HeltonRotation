@@ -37,7 +37,8 @@ class Runner():
                  dataset:dict, 
                  test:dict, 
                  model:dict, 
-                 optimizer:dict):
+                 optimizer:dict,
+                 merge:bool):
         '''Runner初始化
         Args:
             - mode:            当前模式是训练/验证/推理
@@ -77,6 +78,8 @@ class Runner():
         self.log_interval = log_interval
         self.eval_interval = eval_interval
         self.reverse_map = reverse_map
+        # 是否将裁剪的图像评估结果转成完整图像上的评估结果
+        self.merge = merge
         '''GPU/CPU'''
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # NOTE:多卡:
@@ -265,41 +268,48 @@ class Runner():
 
 
 
-    def evaler(self, epoch, model=False, inferring=True, ckpt_path=None, T=0.01, fuse=False):
+    def evaler(self, epoch, model=False, inferring=True, ckpt_path=None, T=0.01, fuse=False, merge=False, eval_ann_dir=False, imgset_file_path=False):
         '''一个epoch的验证(验证集)
         '''
+        # 这部分当merge=True时使用传参(使用DOTA未裁剪前的txt)
+        eval_ann_dir = eval_ann_dir if merge else self.eval_ann_dir
+        imgset_file_path = imgset_file_path if merge else self.imgset_file_path
+
         if model == False:
             model=self.model
         if (epoch % self.eval_interval == 0 and (epoch!=0 or self.eval_interval==1)) or self.mode=='eval':
             '''在验证集上评估并计算AP'''
             # self.valEpoch(T, agnostic=False, vis_heatmap=False, save_vis_path=None, half=False)
             # 采用一张图一张图遍历的方式,并生成评估结果txt文件
-            ap_50 = self.test.genPredDOTAtxt(
+            ap_50, recall_50, precision_50 = self.test.genPredDOTAtxt(
                     self.val_img_dir, \
-                    self.imgset_file_path, \
-                    self.eval_ann_dir, \
+                    imgset_file_path, \
+                    eval_ann_dir, \
                     self.log_dir, \
                     T=T, \
                     model=model, \
                     inferring=inferring, \
                     ckpt_path=ckpt_path, \
                     reverse_map=self.reverse_map, \
-                    fuse=fuse
+                    fuse=fuse, \
+                    merge=merge,
                 )
             '''最后一个epoch计算模型参数量, FLOPs'''
             if epoch == self.epoch:
                 computeParamFLOPs(self.device, model, self.img_size)
             '''记录变量'''
-            recoardArgs(mode='epoch', argsHistory=self.argsHistory, ap_50=ap_50)
+            recoardArgs(mode='epoch', argsHistory=self.argsHistory, ap_50=ap_50, recall_50=recall_50, precision_50=precision_50)
             if self.mode == 'eval':         
                 printLog(mode='epoch', logger=self.logger, argsHistory=self.argsHistory, step=0, epoch=0)
         else:
             if epoch < self.eval_interval -1:
-                ap_50 = 0
+                ap_50, recall_50, precision_50 = 0, 0, 0
             else:
                 ap_50 = self.argsHistory.args_history_dict['val_mAP@.5'][-1]
+                recall_50 = self.argsHistory.args_history_dict['val_mrecall@.5'][-1]
+                precision_50 = self.argsHistory.args_history_dict['val_mprecision@.5'][-1]
             '''记录变量'''
-            recoardArgs(mode='epoch', argsHistory=self.argsHistory, ap_50=ap_50)
+            recoardArgs(mode='epoch', argsHistory=self.argsHistory, ap_50=ap_50, recall_50=recall_50, precision_50=precision_50)
 
 
 

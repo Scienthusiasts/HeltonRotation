@@ -73,7 +73,7 @@ runner = dict(
     eval_interval = 1,
     reverse_map = reverse_map,
     class_names = cat_names, 
-
+    merge = False,
     dataset = dict(
         bs = 8,
         num_workers = 0,
@@ -158,9 +158,12 @@ runner = dict(
 )
 
 eval = dict(
+    eval_ann_dir = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_1.5/val/labelTxt-v1.0/labelTxt',
+    imgset_file_path = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val_merge_img_name.txt',
     inferring = True,
+    merge = True,
     ckpt_path = TESTCKPT,
-    T = 0.01,        
+    T = 0.01,       
 )
 
 test = dict(

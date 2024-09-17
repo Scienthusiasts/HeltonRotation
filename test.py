@@ -107,7 +107,7 @@ class Test():
 
 
 
-    def genPredDOTAtxt(self, img_dir, imgset_file_path, val_ann_dir, pred_save_dir, T=0.01, agnostic=False, model=None, inferring=True, ckpt_path=None, reverse_map=None, fuse=False):
+    def genPredDOTAtxt(self, img_dir, imgset_file_path, val_ann_dir, pred_save_dir, T=0.01, agnostic=False, model=None, inferring=True, ckpt_path=None, reverse_map=None, fuse=False, merge=False):
         '''生成预测结果, 并将预测结果整理为DOTA_devkit评估的格式
             Args:
                 - img_dir:          数据集图像文件夹
@@ -117,14 +117,16 @@ class Test():
                 - T:                置信度(模型推理超参)
                 - model:            导入的模型(当mode=='eval'时有效)
                 - inferring:        是否让网络推理一遍数据集并生成txt
+                - merge:            是否将裁剪后的预测结果拼回去评估
 
             Returns:
                 - mAP:   所有类别平均 AP@.5:.95          
         '''
-        # 当某个类别完全没有预测实例时,使用以下下占位(基于DOTAval)
-        occupy_tmp = 'P1323__1024__2048___0 0.035342857 465.94525 235.61427 388.495 141.69347 510.94528 40.716816 588.3955 134.63762' 
+        img_dir_list = os.listdir(img_dir)
+        # 当某个类别完全没有预测实例时,使用以下占位(基于DOTA1.0-split val)
+        occupy_tmp = 'P0003__1024__0___0 0.035342857 465.94525 235.61427 388.495 141.69347 510.94528 40.716816 588.3955 134.63762' 
         pred_save_dir += '/eval_tmp'
-        if not os.path.isdir(pred_save_dir ):os.mkdir(pred_save_dir )
+        if not os.path.isdir(pred_save_dir ):os.mkdir(pred_save_dir)
         # 是否导入权重
         if ckpt_path != None:
             print('load_ckpt: ', ckpt_path)
@@ -141,9 +143,9 @@ class Test():
             print('inferring...')
             # 初始化pred_per_cat_list存储逐类别预测实例
             pred_per_cat_list = [[] for _ in range(self.cat_nums)]
-            for img_name in tqdm(os.listdir(img_dir)):
+            for img_name in tqdm(img_dir_list):
                 img_path = os.path.join(img_dir, img_name)
-                pred_per_cat_list = self.formatOneImg(img_name, img_path, pred_per_cat_list, T=T, agnostic=False, reverse_map=None)
+                pred_per_cat_list = self.formatOneImg(img_name, img_path, pred_per_cat_list, T=T, agnostic=agnostic, reverse_map=reverse_map)
             # 逐类别生成预测的txt文件
             print('generate class-wise pred txt files...')
             for i, cat_name in tqdm(enumerate(self.class_names)):
@@ -156,10 +158,15 @@ class Test():
                         print(f'no instances in {pred_txt_path}')
                         txt.write(occupy_tmp+'\n')
         # 采用DOTA_devkit进行评估:
+        if merge:
+            merge_pred_save_dir = pred_save_dir.replace('eval_tmp', 'eval_tmp_merge')
+            mergeSplitResult(pred_save_dir, merge_pred_save_dir)
+            pred_save_dir = merge_pred_save_dir
+
         pred_save_path = pred_save_dir + '/Task1_{:s}.txt'
         val_ann_path = val_ann_dir + '/{:s}.txt'
-        map50 = evalDOTAmAP(pred_save_path, val_ann_path, imgset_file_path, self.class_names)
-        return map50
+        map50, mrecall, mprecision = evalDOTAmAP(pred_save_path, val_ann_path, imgset_file_path, self.class_names)
+        return map50, mrecall, mprecision
 
 
 

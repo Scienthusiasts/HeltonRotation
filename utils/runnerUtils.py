@@ -350,10 +350,13 @@ def printLog(
 
     elif mode == 'epoch':
             AP50_list = argsHistory.args_history_dict['val_mAP@.5']
+            recall50_list = argsHistory.args_history_dict['val_mrecall@.5']
+            precision50_list = argsHistory.args_history_dict['val_mprecision@.5']
             # 找到mAP最大对应的epoch
             best_epoch = AP50_list.index(max(AP50_list)) 
             logger.info('=' * 150)
-            log = ("Epoch  [%d]  val_mAP@.5: %.5f best_epoch %d" % (epoch+1, AP50_list[-1], best_epoch+1))
+            log = ("Epoch  [%d]  val_mrecall@.5: %.5f  val_mprecion@.5: %.5f  val_mAP@.5: %.5f  best_epoch %d" % \
+                   (epoch+1, recall50_list[-1], precision50_list[-1], AP50_list[-1], best_epoch+1))
             logger.info(log)
             logger.info('=' * 150)
 
@@ -409,7 +412,9 @@ def recoardArgs(
         argsHistory:ArgsHistory,
         optimizer:optim=None,
         loss:dict=None, 
-        ap_50=None):
+        ap_50=None,
+        recall_50=None,
+        precision_50=None):
     '''训练/验证过程中记录变量(每个iter都会记录, 不间断)
         Args:
             - mode:        训练模式(train, epoch)
@@ -433,7 +438,8 @@ def recoardArgs(
     # 一个epoch结束后val评估结果的平均值
     if mode == 'epoch':             
         argsHistory.record('val_mAP@.5', ap_50)
-
+        argsHistory.record('val_mrecall@.5', recall_50)
+        argsHistory.record('val_mprecision@.5', precision_50)
 
 
 

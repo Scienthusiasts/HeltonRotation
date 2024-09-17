@@ -34,19 +34,24 @@ def evalDOTAmAP(pred_txt_path:str, ann_txt_path:str, imgset_file_path:str, cat_n
             - tabulate_ap_form: 评估结果表格
     '''
     ap_form = []
-    map50 = 0
+    map50, mrecall50, mprecision50 = 0, 0, 0
     # 逐类别评估
     for cat_name in tqdm(cat_names):
         rec, prec, ap, gts, dets = dota.voc_eval(pred_txt_path.format(cat_name), ann_txt_path, imgset_file_path, cat_name, ovthresh=0.5, use_07_metric=True)
         map50 += ap
-        ap_form.append([cat_name, gts, dets, '%.4f'%ap])
+        # 注意: 这里的recall和precision都是取的pr曲线上recall轴/precision轴的平均(即对所有置信度间隔取平均)
+        mrecall50 += rec.mean()
+        mprecision50 += prec.mean()
+        ap_form.append([cat_name, gts, dets, '%.4f'%rec.mean(), '%.4f'%prec.mean(), '%.4f'%ap])
     # 计算mAP
     map50 = map50 / len(cat_names)
-    ap_form.append(['', '', '', ''])
-    ap_form.append(['mAP', '', '', '%.4f'%map50])
-    tabulate_ap_form = tabulate(ap_form, headers=['catagory', 'gts', 'dets', 'AP@.5'], tablefmt="psql")
+    mrecall50 = mrecall50 / len(cat_names)
+    mprecision50 = mprecision50 / len(cat_names)
+    ap_form.append(['', '', '', '', '', ''])
+    ap_form.append(['average', '', '', '%.4f'%mrecall50, '%.4f'%mprecision50, '%.4f'%map50])
+    tabulate_ap_form = tabulate(ap_form, headers=['catagory', 'gts', 'dets', 'recall@.5', 'precision@.5', 'AP@.5'], tablefmt="psql")
     print(tabulate_ap_form)
-    return map50
+    return map50, mrecall50, mprecision50
 
 
 

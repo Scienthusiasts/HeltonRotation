@@ -243,8 +243,7 @@ def voc_eval(detpath,
     # ground truth
     prec = tp / np.maximum(tp + fp, np.finfo(np.float64).eps) # 准确率
     ap = voc_ap(rec, prec, use_07_metric)
-
-    return rec, prec, ap, npos, len(tp)+len(fp)
+    return rec, prec, ap, npos, len(tp) + len(fp)
 
 def GetFileFromThisRootDir(dir,ext = None):
   allfiles = []
@@ -276,15 +275,14 @@ def image2txt(srcpath, dstpath):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='MMDet test (and eval) a model')
-    parser.add_argument('--detpath', default='F:/DeskTop/git/HeltonRotation/DOTA_devkit/DOTA_devkit_lib/evaluation_format_example/Task1_val/Task1_{:s}.txt', help='test config file path')
-    parser.add_argument('--annopath', default='E:/datasets/RemoteSensing/DOTA-1.0_1.5/val/labelTxt-v1.0/labelTxt/{:s}.txt', help='checkpoint file')
-    parser.add_argument('--imagesetfile', default='F:/DeskTop/git/HeltonRotation/DOTA_devkit/DOTA_devkit_lib/evaluation_format_example/val_img_name_no_split.txt', help='checkpoint file')
+    parser.add_argument('--detpath', default='/data/yht/code/Helton/HeltonTeacher/log/fcos/train/riouloss_bs4-2_sgd_lr0.0025_10per/2024-09-11-00-28-36_train/eval_tmp/Task1_{:s}.txt', help='test config file path')
+    parser.add_argument('--annopath', default='/data/yht/data/DOTA-1.0_ss_size-1024_gap-200/val/annfiles/{:s}.txt', help='checkpoint file')
+    parser.add_argument('--imagesetfile', default='/data/yht/data/DOTA-1.0_ss_size-1024_gap-200/val_img_name.txt', help='checkpoint file')
     args = parser.parse_args()
     return args
 
 def main():
     args = parse_args()
-    # detpath = r'/mnt/SSD/lwt_workdir/data/dota_angle/result_merge_roitran/{:s}.txt'
     detpath = args.detpath
     annopath = args.annopath
     imagesetfile = args.imagesetfile
@@ -317,24 +315,24 @@ def main():
              classname,
              ovthresh=0.5,
              use_07_metric=True)
+        print(rec.mean(), prec.mean(), ap.mean())
         map = map + ap
-        print('ap: ', ap)
         classaps.append(ap)
 
-        # # umcomment to show p-r curve of each category
-        # plt.figure(figsize=(8,4))
-        # plt.xlabel('Recall')
-        # plt.ylabel('Precision')
-        # plt.xticks(fontsize=11)
-        # plt.yticks(fontsize=11)
-        # plt.xlim(0, 1)
-        # plt.ylim(0, 1)
-        # ax = plt.gca()
-        # ax.spines['top'].set_color('none')
-        # ax.spines['right'].set_color('none')
-        # plt.plot(rec, prec)
-        # # plt.show()
-        # plt.savefig('pr_curve/{}.png'.format(classname))
+        # umcomment to show p-r curve of each category
+        plt.figure(figsize=(8,4))
+        plt.xlabel('Recall')
+        plt.ylabel('Precision')
+        plt.xticks(fontsize=11)
+        plt.yticks(fontsize=11)
+        plt.xlim(0, 1)
+        plt.ylim(0, 1)
+        ax = plt.gca()
+        ax.spines['top'].set_color('none')
+        ax.spines['right'].set_color('none')
+        plt.plot(rec, prec)
+        # plt.show()
+        plt.savefig('./pr_curve_{}.png'.format(classname))
     map = map/(len(classnames)-skippedClassCount)
     print('map:', map)
     classaps = 100*np.array(classaps)
@@ -344,3 +342,4 @@ if __name__ == '__main__':
     # image2txt('/media/test/4d846cae-2315-4928-8d1b-ca6d3a61a3c6/DroneVehicle/val/raw/images', 
     #           '/media/test/4d846cae-2315-4928-8d1b-ca6d3a61a3c6/DroneVehicle/val/raw/')
     # image2txt('dataset/dataset_demo_rate1.0_split1024_gap200/images', 'dataset/dataset_demo_rate1.0_split1024_gap200/')
+    

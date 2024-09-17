@@ -1,13 +1,13 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'test'
+MODE = 'eval'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
 BACKBONE = 'resnet50.a1_in1k'
 BACKBONE_CKPT = "F:/Desktop/git/CKPT/HD_ckpt/ckpt/backbone_resnet50.a1_in1k.pt"
-LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss/2024-08-27-17-21-12_train/last.pt"
-TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss/2024-08-27-17-21-12_train/last.pt"
+LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_sample-by-freq/2024-09-07-11-44-16_train/best_AP50.pt"
+TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_sample-by-freq/2024-09-07-11-44-16_train/best_AP50.pt"
 RESUME = False
 TTA = [[640,640], [832,832], [960,960]]
 TTAOPEN = False
@@ -15,8 +15,8 @@ TTAOPEN = False
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
 # best_AP50.pt last.pt
-LOADCKPT = r"F:\Desktop\git\CKPT\HR_ckpt\rotated_fcos\theta-weight1_adamw_lr1e-3_rotatediouloss\2024-09-05-01-50-16_train\best_AP50.pt"
-TESTCKPT = r"F:\Desktop\git\CKPT\HR_ckpt\rotated_fcos\theta-weight1_adamw_lr1e-3_rotatediouloss\2024-09-05-01-50-16_train\best_AP50.pt"
+# LOADCKPT = r"best_AP50.pt"
+# TESTCKPT = r"best_AP50.pt"
 
 
 
@@ -65,7 +65,7 @@ runner = dict(
     eval_interval = 1,
     reverse_map = reverse_map,
     class_names = cat_names, 
-
+    merge = False,
     dataset = dict(
         bs = 8,
         num_workers = 0,
@@ -139,7 +139,10 @@ runner = dict(
 )
 
 eval = dict(
+    eval_ann_dir = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_1.5/val/labelTxt-v1.0/labelTxt',
+    imgset_file_path = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val_merge_img_name.txt',
     inferring = True,
+    merge = True,
     ckpt_path = TESTCKPT,
     T = 0.01,        
 )
@@ -149,13 +152,13 @@ test = dict(
     mode = 'image',
     # '''DOTA'''
 
-    img_path = r"samples\dota1.0\P1001__1024__2472___337.png",
+    img_path = r"samples/dota1.0/P0686__1024__0___65.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",
     # save_vis_path = './samples/videos/res1.mp4',
     ckpt_path = TESTCKPT,
-    T = 0.15,
+    T = 0.25,
     agnostic = False,
     show_text = False,
     vis_heatmap = True,
