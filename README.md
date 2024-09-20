@@ -34,11 +34,18 @@
 **update 24/9/9**
 
 - 支持FCOS_obb
-
 - 添加了sampled_by_freq 数据采样策略
 - 支持可视化置信度热力图(centerness×score)
 
+**update 24/9/18**
 
+- 添加mrecall, mprecision评估指标（tensorboard, 日志）
+
+**update 24/9/20**
+
+- 添加partial label设置(对比半监督)
+
+- 针对FCOS-obb，添加了高斯椭圆正负样本分配策略
 
 ## Demo
 
@@ -130,19 +137,36 @@ FCOS改为旋转框：在regression分支加了角度回归头(角度回归和�
 
 - lr_decay=0.1
 
-| Model | theta_loss_weight |       theta_loss        | optim | max_lr |  mAP50(%)  |
-| :---: | :---------------: | :---------------------: | :---: | :----: | :--------: |
-| FCOS  |         1         | selective_IoU_smooth_l1 |  sgd  | 2.5e-3 |   59.015   |
-| FCOS  |         1         | selective_IoU_smooth_l1 | adamw |  2e-4  |   66.282   |
-| FCOS  |         1         | selective_IoU_smooth_l1 | adamw |  1e-3  |   68.928   |
-| FCOS  |        10         | selective_IoU_smooth_l1 | adamw |  2e-4  |   66.290   |
-| FCOS  |         1         |   Rotated_IoU(linear)   | adamw |  1e-3  |   69.360   |
-| FCOS* |         1         |   Rotated_IoU(linear)   | adamw |  1e-3  | **70.455** |
-| FCOS  |         1         |   Rotated_IoU(linear)   |  sgd  | 2.5e-3 |   61.513   |
+|          Model          | theta_loss_w |       theta_loss        |  bs  | optim | max_lr |   mAP50(%)    |
+| :---------------------: | :----------: | :---------------------: | :--: | :---: | :----: | :-----------: |
+|          FCOS           |      1       | selective_IoU_smooth_l1 |  8   |  sgd  | 2.5e-3 |    59.015     |
+|          FCOS           |      1       | selective_IoU_smooth_l1 |  8   | adamw |  2e-4  |    66.282     |
+|          FCOS           |      1       | selective_IoU_smooth_l1 |  8   | adamw |  1e-3  |    68.928     |
+|          FCOS           |      10      | selective_IoU_smooth_l1 |  8   | adamw |  2e-4  |    66.290     |
+|          FCOS           |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |    69.360     |
+|          FCOS           |      1       |   Rotated_IoU(linear)   |  4   | adamw |  1e-3  |    69.030     |
+|          FCOS*          |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |  **70.455**   |
+|          FCOS*          |      1       |   Rotated_IoU(linear)   |  4   | adamw |  1e-3  |    68.790     |
+|   FCOS-reg_centerness   |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  | 69.655/69.501 |
+|          FCOS           |      1       |   Rotated_IoU(linear)   |  8   |  sgd  | 2.5e-3 |    61.513     |
+|          FCOS           |      1       |   Rotated_IoU(linear)   |  8   |  sgd  |  1e-2  |    62.854     |
+|        FCOS-GCA         |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |    70.148     |
+| FCOS-reg_centerness-GA  |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |               |
+|                         |              |                         |      |       |        |               |
+| FCOS-reg_centerness-10% |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |    53.479     |
+| FCOS-reg_centerness-10% |      1       |   Rotated_IoU(linear)   |  8   |  sgd  | 2.5e-3 |    49.910     |
 
 *表示 sample img by categories frequency， 即根据数据集中每个类别下的目标GT数量的多少计算采样比例(**根据比例取倒数作为采样概率**)，GT数量越少的类别就有越大的概率采样到，采样到的图片包含对应类别的GT，同时，在采样的图片上，还会将那些GT数量较多的类别的GT进行mask(只保留GT数量最少的3个类别)，其中**每个batch里有一张是采样的图像**。
 
+GA表示高斯椭圆字符分配策略，cls和centerness分支采用高斯椭圆的分配方法(回归分支仍进一步通过半径限制正样本范围)，相比原始FCOS的分配策略引入了目标角度的信息，更适合有向目标检测任务。
 
+**upload to DOTA server evaluation result (testset):**
+
+yolov5l_Select_IoUsmooths1_rootfocalloss_epoch101_lr1e-2_sgd_trainval
+
+|  PL  |  BD  |  BR  | GTF  |  SV  |  LV  |  SH  |  TC  |  BC  |  ST  | SBF  |  RA  |  HA  |  SP  |  HC  | <font color=Red>mAP50</font> | mAP75 | mAP  |
+| :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--------------------------: | :---: | :--: |
+|      |      |      |      |      |      |      |      |      |      |      |      |      |      |      |                              |       |      |
 
 ## reference
 
@@ -153,4 +177,6 @@ FCOS改为旋转框：在regression分支加了角度回归头(角度回归和�
 [hukaixuan19970627/yolov5_obb: yolov5 + csl_label.(Oriented Object Detection)（Rotation Detection）（Rotated BBox）基于yolov5的旋转目标检测 (github.com)](https://github.com/hukaixuan19970627/yolov5_obb)
 
 SCRDet: Towards More Robust Detection for Small, Cluttered and Rotated Objects (ICCV2019)
+
+https://github.com/facias914/sood-mcl
 
