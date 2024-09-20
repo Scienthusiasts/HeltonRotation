@@ -107,9 +107,10 @@ class Head(nn.Module):
         '''FCOS的正负样本分配'''
         # 对应位置标记为-1的是负样本 [bs * total_anchor_num, 1] [bs * total_anchor_num, 1] [bs * total_anchor_num, 4]
         # 注意这里angle_targets里的角度是为归一化的角度, 范围在(-180, 0]
-        cls_targets, cnt_targets, reg_targets, angle_targets = FCOSAssigner(batch_bboxes, batch_angles, batch_labels, input_shape)
+        cls_targets, cnt_targets, reg_targets, angle_targets, pos_mask, reg_pos_mask = FCOSAssigner(batch_bboxes, batch_angles, batch_labels, input_shape)
         # 获得正样本(bool) [bs, total_anchor_num]
-        pos_mask = (cnt_targets > -1).reshape(-1)
+        pos_mask = pos_mask.reshape(-1)
+        reg_pos_mask = reg_pos_mask.reshape(-1)
         '''计算损失'''
         # 调整预测结果的形状:
         # [[bs, cls_num, h, w],...,[[bs, cls_num, 5, 5]]] -> [bs * total_anchor_num, cls_num]
@@ -142,11 +143,11 @@ class Head(nn.Module):
         if self.angle_loss_type == 'IoUSmoothL1Loss':
             '''回归损失GIoU Loss(正样本才计算)'''
             # 计算GIoU loss
-            giou = computeGIoU(reg_preds[pos_mask], reg_targets[pos_mask])
+            giou = computeGIoU(reg_preds[reg_pos_mask], reg_targets[reg_pos_mask])
             reg_loss = (1. - giou).mean()
             '''角度损失(正样本才计算)'''
             # self.IoUSmoothl1Loss接受的angle_preds和angle_targets都需要是归一化的角度
-            theta_loss = self.IoUSmoothl1Loss(angle_preds[pos_mask].reshape(-1), angle_targets[pos_mask].reshape(-1), reg_preds[pos_mask], reg_targets[pos_mask])
+            theta_loss = self.IoUSmoothl1Loss(angle_preds[reg_pos_mask].reshape(-1), angle_targets[reg_pos_mask].reshape(-1), reg_preds[reg_pos_mask], reg_targets[reg_pos_mask])
         '''box损失和角度损失一起计算, RotatedIoU Loss'''
         if self.angle_loss_type == 'RotatedIoULoss':
             # xyxy -> xywh
@@ -158,7 +159,7 @@ class Head(nn.Module):
             # 将坐标回归结果和角度预测结果拼在一起 [bs * total_anchor_num, 4+1]
             box_preds = torch.cat((reg_preds, angle_preds), dim=1)
             box_targets = torch.cat((reg_targets, angle_targets), dim=1)
-            reg_loss, riou = self.RIoULoss(box_preds, box_targets, pos_mask.reshape(1, -1), shape='BC')
+            reg_loss, riou = self.RIoULoss(box_preds, box_targets, reg_pos_mask.reshape(1, -1), shape='BC')
 
         '''loss以字典形式回传'''
         loss = dict(

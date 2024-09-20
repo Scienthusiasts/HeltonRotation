@@ -25,7 +25,6 @@ from datasets.preprocess import *
 
 
 
-
 class DOTA2LongSideFormatYOLODataset(Dataset):
     '''基于DOTA数据集YOLO格式的长边表示法数据集读取方式, 角度的范围在[-180, 0)
     '''
@@ -44,7 +43,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
             FRCNNDataset
         '''      
         '''max_boxes是FOCS独有的, 用来padding不同图像间box数量不同的问题'''
-        self.max_boxes = 400
+        self.max_boxes = 350 # 400
         self.sample_by_freq = sample_by_freq
         self.mode = trainMode
         self.ann_mode = ann_mode
@@ -56,6 +55,9 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         self.img_dir = img_dir
         self.ann_dir = ann_dir
         self.ann_list = os.listdir(ann_dir)
+        # 进行全监督部分样本训练时加上下面这一行
+        # self.ann_list = self.filterFullLabeledData('/data/yht/code/Helton/HeltonTeacher/DOTAv1.0_train_list_seed22.json', 0.1)
+
         if filter_empty_gt:self.filter_empty_gt()
         # 数据集大小
         self.datasetNum = len(self.ann_list)
@@ -64,6 +66,23 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
         if self.sample_by_freq:
             # 统计每个类别下有哪些图片, 并给出每个类别的采样比例(类别数量少就采样概率大一些)
             self.cat_img_dict, self.sampling_ratio = count_imgs_per_cat(img_dir, ann_dir, num_classes)
+
+
+
+
+    def filterFullLabeledData(self, data_list_path, sup_ratio):
+        '''根据data_list筛选出那些作为全监督的图片
+        '''
+        ann_list = []
+        with open(data_list_path) as f:
+            data_list = json.load(f)
+            full_label_num = int(sup_ratio * len(data_list))
+            for ann_name in os.listdir(self.ann_dir):
+                # [:5]即如"P0000"的形式
+                if ann_name[:5] in data_list[:full_label_num]:
+                    ann_list.append(ann_name)
+        return ann_list
+    
 
 
 
@@ -324,7 +343,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
             bboxes.append(sampled_box)
             angles.append(sampled_angle)
             labels.append(sampled_label)   
-        '''np -> tensor   '''  
+        # np -> tensor     
         images  = torch.from_numpy(np.array(images)).type(torch.FloatTensor)
         bboxes  = torch.from_numpy(np.array(bboxes)).type(torch.FloatTensor)
         angles  = torch.from_numpy(np.array(angles)).type(torch.FloatTensor)
