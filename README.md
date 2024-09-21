@@ -137,24 +137,25 @@ FCOS改为旋转框：在regression分支加了角度回归头(角度回归和�
 
 - lr_decay=0.1
 
-|          Model          | theta_loss_w |       theta_loss        |  bs  | optim | max_lr |   mAP50(%)    |
-| :---------------------: | :----------: | :---------------------: | :--: | :---: | :----: | :-----------: |
-|          FCOS           |      1       | selective_IoU_smooth_l1 |  8   |  sgd  | 2.5e-3 |    59.015     |
-|          FCOS           |      1       | selective_IoU_smooth_l1 |  8   | adamw |  2e-4  |    66.282     |
-|          FCOS           |      1       | selective_IoU_smooth_l1 |  8   | adamw |  1e-3  |    68.928     |
-|          FCOS           |      10      | selective_IoU_smooth_l1 |  8   | adamw |  2e-4  |    66.290     |
-|          FCOS           |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |    69.360     |
-|          FCOS           |      1       |   Rotated_IoU(linear)   |  4   | adamw |  1e-3  |    69.030     |
-|          FCOS*          |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |  **70.455**   |
-|          FCOS*          |      1       |   Rotated_IoU(linear)   |  4   | adamw |  1e-3  |    68.790     |
-|   FCOS-reg_centerness   |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  | 69.655/69.501 |
-|          FCOS           |      1       |   Rotated_IoU(linear)   |  8   |  sgd  | 2.5e-3 |    61.513     |
-|          FCOS           |      1       |   Rotated_IoU(linear)   |  8   |  sgd  |  1e-2  |    62.854     |
-|        FCOS-GCA         |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |    70.148     |
-| FCOS-reg_centerness-GA  |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |               |
-|                         |              |                         |      |       |        |               |
-| FCOS-reg_centerness-10% |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |    53.479     |
-| FCOS-reg_centerness-10% |      1       |   Rotated_IoU(linear)   |  8   |  sgd  | 2.5e-3 |    49.910     |
+|              Model              | theta_loss_w |       theta_loss        |  bs  | optim | max_lr |   mAP50(%)    |
+| :-----------------------------: | :----------: | :---------------------: | :--: | :---: | :----: | :-----------: |
+|              FCOS               |      1       | selective_IoU_smooth_l1 |  8   |  sgd  | 2.5e-3 |    59.015     |
+|              FCOS               |      1       | selective_IoU_smooth_l1 |  8   | adamw |  2e-4  |    66.282     |
+|              FCOS               |      1       | selective_IoU_smooth_l1 |  8   | adamw |  1e-3  |    68.928     |
+|              FCOS               |      10      | selective_IoU_smooth_l1 |  8   | adamw |  2e-4  |    66.290     |
+|              FCOS               |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |    69.360     |
+|              FCOS               |      1       |   Rotated_IoU(linear)   |  4   | adamw |  1e-3  |    69.030     |
+|              FCOS*              |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |    70.455     |
+|              FCOS*              |      1       |   Rotated_IoU(linear)   |  4   | adamw |  1e-3  |    68.790     |
+|       FCOS-reg_centerness       |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  | 69.655/69.501 |
+|              FCOS               |      1       |   Rotated_IoU(linear)   |  8   |  sgd  | 2.5e-3 |    61.513     |
+|              FCOS               |      1       |   Rotated_IoU(linear)   |  8   |  sgd  |  1e-2  |    62.854     |
+|             FCOS-GA             |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |    70.148     |
+|     FCOS-reg_centerness-GA      |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |  **70.648**   |
+| FCOS-reg_centerness-GA-more-pos |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |    70.426     |
+|                                 |              |                         |      |       |        |               |
+|     FCOS-reg_centerness-10%     |      1       |   Rotated_IoU(linear)   |  8   | adamw |  1e-3  |    53.479     |
+|     FCOS-reg_centerness-10%     |      1       |   Rotated_IoU(linear)   |  8   |  sgd  | 2.5e-3 |    49.910     |
 
 *表示 sample img by categories frequency， 即根据数据集中每个类别下的目标GT数量的多少计算采样比例(**根据比例取倒数作为采样概率**)，GT数量越少的类别就有越大的概率采样到，采样到的图片包含对应类别的GT，同时，在采样的图片上，还会将那些GT数量较多的类别的GT进行mask(只保留GT数量最少的3个类别)，其中**每个batch里有一张是采样的图像**。
 
@@ -162,11 +163,17 @@ GA表示高斯椭圆字符分配策略，cls和centerness分支采用高斯椭�
 
 **upload to DOTA server evaluation result (testset):**
 
-yolov5l_Select_IoUsmooths1_rootfocalloss_epoch101_lr1e-2_sgd_trainval
+fcos_theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_trainval
 
-|  PL  |  BD  |  BR  | GTF  |  SV  |  LV  |  SH  |  TC  |  BC  |  ST  | SBF  |  RA  |  HA  |  SP  |  HC  | <font color=Red>mAP50</font> | mAP75 | mAP  |
-| :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--: | :--------------------------: | :---: | :--: |
-|      |      |      |      |      |      |      |      |      |      |      |      |      |      |      |                              |       |      |
+|  PL   |  BD   |  BR   |  GTF  |  SV   |  LV   |  SH   |  TC   |  BC   |  ST   |  SBF  |  RA   |  HA   |  SP   |  HC   | <font color=Red>mAP50</font> | mAP75 |  mAP  |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--------------------------: | :---: | :---: |
+| 89.30 | 82.05 | 48.75 | 61.82 | 76.42 | 73.72 | 80.69 | 90.83 | 85.78 | 86.47 | 67.11 | 67.57 | 72.50 | 74.25 | 53.12 |          **74.03**           | 46.92 | 45.05 |
+
+fcos_theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner_trainval
+
+|  PL   |  BD   |  BR   |  GTF  |  SV   |  LV   |  SH   |  TC   |  BC   |  ST   |  SBF  |  RA   |  HA   |  SP   |  HC   | <font color=Red>mAP50</font> | mAP75 |  mAP  |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--------------------------: | :---: | :---: |
+| 89.62 | 84.27 | 48.81 | 68.53 | 77.46 | 74.47 | 81.29 | 90.79 | 87.11 | 86.41 | 67.07 | 64.64 | 73.18 | 77.83 | 58.07 |          **75.30**           | 47.80 | 45.74 |
 
 ## reference
 

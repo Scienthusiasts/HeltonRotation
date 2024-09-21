@@ -125,6 +125,6 @@ if __name__ == '__main__':
 
 
     '''merge'''
-    src_dir = 'log/tmp_exp/2024-08-01-14-57-26_val/eval_tmp'
-    tgt_dir = 'log/tmp_exp/2024-08-01-14-57-26_val/eval_merge'
+    src_dir = 'log/tmp_exp\eval/2024-09-21-14-50-42_val/eval_tmp'
+    tgt_dir = 'log/tmp_exp\eval/2024-09-21-14-50-42_val/eval_merge'
     mergeSplitResult(src_dir, tgt_dir)

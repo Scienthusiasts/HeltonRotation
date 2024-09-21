@@ -1,13 +1,13 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'test'
+MODE = 'eval'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
 BACKBONE = 'resnet50.a1_in1k'
 BACKBONE_CKPT = "F:/Desktop/git/CKPT/HD_ckpt/ckpt/backbone_resnet50.a1_in1k.pt"
-LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_gaussian-assigner/2024-09-19-21-43-11_train/best_AP50.pt"
-TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_gaussian-assigner/2024-09-19-21-43-11_train/best_AP50.pt"
+LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness/trainval/2024-09-21-01-23-15_train/last.pt"
+TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness/trainval/2024-09-21-01-23-15_train/last.pt"
 RESUME = False
 TTA = [[640,640], [832,832], [960,960]]
 TTAOPEN = False
@@ -40,7 +40,7 @@ ann_name = {'dota':'annfiles', 'yolo':'yolo_longside_format_annfiles'}[ann_mode]
 train_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/train/images"
 train_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/train/{ann_name}"
 # 要推理test测试集时只需修改val_img_dir:
-val_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/images"
+val_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/test/images"
 val_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/{ann_name}"
 # 这两个评估时会用到, 其中eval_ann_dir里的txt是基于DOTA八参格式
 imgset_file_path = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val_img_name.txt"
@@ -60,7 +60,7 @@ runner = dict(
     resume = RESUME,
     img_size = IMGSIZE,
     epoch = 12*4,
-    log_dir = './log/tmp_exp',
+    log_dir = f'./log/tmp_exp/{MODE}',
     log_interval = 1,
     eval_interval = 1,
     reverse_map = reverse_map,
@@ -142,7 +142,7 @@ eval = dict(
     eval_ann_dir = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_1.5/val/labelTxt-v1.0/labelTxt',
     imgset_file_path = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val_merge_img_name.txt',
     inferring = True,
-    merge = True,
+    merge = False,
     ckpt_path = TESTCKPT,
     T = 0.01,        
 )
@@ -152,7 +152,7 @@ test = dict(
     mode = 'image',
     # '''DOTA'''
 
-    img_path = r"samples\dota1.0\P0956__1024__824___126.png",
+    img_path = r"samples/dota1.0/P0956__1024__824___126.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",

@@ -91,7 +91,7 @@ class Head(nn.Module):
             reg_conv_out=self.reg_conv(lvl_x)
 
             cls_logits.append(self.cls_head(cls_conv_out))
-            cnt_logits.append(self.cnt_head(cls_conv_out))
+            cnt_logits.append(self.cnt_head(reg_conv_out))
             reg_preds.append(self.scale_exp[lvl](self.reg_head(reg_conv_out)))
             angle_preds.append(self.angle_head(reg_conv_out))
         return cls_logits, cnt_logits, reg_preds, angle_preds
