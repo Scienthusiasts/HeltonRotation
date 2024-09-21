@@ -135,7 +135,7 @@ class Head(nn.Module):
         # 角度均为归一化角度, [-180, 0)->[0, 1)
         angle_preds = torch.sigmoid(angle_preds)
         angle_targets = (angle_targets + 180) / 180
-        # box回归坐标乘-1是因为将左上距离转换为左上角点(中心是(0,0))得到xyxy格式
+        # box回归坐标乘-1是因为将左上距离转换为左上角点(中心是(0,0))得到xyxy格式(computeGIoU接受的是xyxy格式)
         reg_preds[:, [0,1]] *= -1
         reg_targets[:, [0,1]] *= -1
         theta_loss = torch.tensor(0).to(cls_preds.device)

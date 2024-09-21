@@ -3,7 +3,7 @@
 
 该项目的基本框架逻辑遵循：[HeltonDetection](https://github.com/Scienthusiasts/HeltonDetection)
 
-**Create 24/7/21: **
+**Create 24/7/21**
 
 - 发布dev分支
 
@@ -30,6 +30,18 @@
 > 测试和评估涉及到需要计算nms(训练的时候没用到NMS),因此对于这部分的修改,需要引入旋转IoU和旋转框的NMS,这部分我直接基于mmcv.ops中的rotated算子进行实现
 > 对于测试一张图像, 只需要将预测的theta作用到回归框的坐标上即可,这里主要修改可视化函数，添加rbox2PolyNP方法将5参表示法转化为8参表示法,再利用cv2.drawContours进行绘制
 > 对于评估整个验证集,这里遵循DOTA_devikit的评估方式, 即将模型的预测结果按照类别分别保存在相应类别的txt文档当中(格式为: file_name, score, 8个坐标), 评估时直接调用DOTA_devikit下dota_evaluation_task1.voc_eval方法
+
+**如何在test上测试并提交DOTA服务器**
+
+> 目前的方法，以后可以修改整合
+>
+> 将config文件下的`val_img_dir`字段设置为test图像所在目录，然后进行测试，报错了不用管,因为test没有GT文件
+>
+> 在`utils\metrics.py`下执行merge对应方法即得到整合后的模型推理结果(将split上的推理结果合并)
+>
+> 在https://captain-whu.github.io/DOTA/evaluation.html提交
+
+
 
 **update 24/9/9**
 
