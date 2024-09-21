@@ -289,14 +289,21 @@ def get_grids(w, h, stride):
 # def FCOSAssigner(gt_boxes, gt_angles, classes, input_shape, strides=[8, 16, 32, 64, 128], \
 #                  limit_ranges=[[-1,64],[64,128],[128,256],[256,512],[512,999999]], sample_radiu_ratio=1.5):
 #     '''FCOS正负样本分配
-#         # Args:
-#             - gt_boxes:      GTbox  [bs, max_box_nums, 4]
-#             - classes:       类别gt [bs, max_box_nums]
-#             - input_shape:   网络输入的图像尺寸 默认[640, 640]
-#             - strides:    
-#             - limit_ranges:    
-#             - sample_radiu_ratio:   
-#         # Returns:
+#         Args:
+#             - gt_boxes:           GT box   [[max_box_nums, 4], ..., [...]]
+#             - gt_angles:          GT angle [[max_box_nums], ..., [...]]
+#             - classes:            GT label [[max_box_nums], ..., [...]]
+#             - input_shape:        网络输入的图像尺寸 默认[1024, 1024]
+#             - strides:            多尺度特征下采样率
+#             - limit_ranges:       每层特征限制最小的box长/宽
+#             - sample_radiu_ratio: 限制正样本半径(单位:grid大小)
+#         Returns:
+#             - cls_targets:   [bs * total_anchor_num, 1] 
+#             - cnt_targets:   [bs * total_anchor_num, 1] 
+#             - reg_targets:   [bs * total_anchor_num, 4] 
+#             - angle_targets: [bs * total_anchor_num, 1] 
+#             - pos_mask:      [bs * total_anchor_num, 1] 分类部分(cls, cnt)对应的正样本mask
+#             - reg_pos_mask:  [bs * total_anchor_num, 1] 回归部分(angle, box)对应的正样本mask
 #     '''
 #     cls_targets_all_level = []
 #     cnt_targets_all_level = []
@@ -418,15 +425,26 @@ def get_grids(w, h, stride):
 
 def FCOSAssigner(gt_boxes, gt_angles, classes, input_shape, strides=[8, 16, 32, 64, 128], \
                  limit_ranges=[[-1,64],[64,128],[128,256],[256,512],[512,999999]], sample_radiu_ratio=1.5):
-    '''FCOS正负样本分配(添加了高斯分配策略)
-        # Args:
-            - gt_boxes:      GTbox  [bs, max_box_nums, 4]
-            - classes:       类别gt [bs, max_box_nums]
-            - input_shape:   网络输入的图像尺寸 默认[640, 640]
-            - strides:    
-            - limit_ranges:    
-            - sample_radiu_ratio:   
-        # Returns:
+    '''FCOS正负样本分配
+       添加了高斯分配策略, 具体变动如下:
+       1.正样本:以GT框中点为中心的一定正方形区域 -> 以GT框中点为中心的一定正方形区域(回归) + 以GT框中点为中心的一定椭圆区域(分类)
+       2.centerness: √[min(l, r)/max(l ,r) * min(t, b)/max(t ,b)] -> 1 - gaussian_centerness_dist
+       
+        Args:
+            - gt_boxes:           GT box   [[max_box_nums, 4], ..., [...]]
+            - gt_angles:          GT angle [[max_box_nums,  ], ..., [...]]
+            - classes:            GT label [[max_box_nums,  ], ..., [...]]
+            - input_shape:        网络输入的图像尺寸 默认[1024, 1024]
+            - strides:            多尺度特征下采样率
+            - limit_ranges:       每层特征限制最小的box长/宽
+            - sample_radiu_ratio: 限制正样本半径(单位:grid大小)
+        Returns:
+            - cls_targets:   [bs * total_anchor_num, 1] 
+            - cnt_targets:   [bs * total_anchor_num, 1] 
+            - reg_targets:   [bs * total_anchor_num, 4] 
+            - angle_targets: [bs * total_anchor_num, 1] 
+            - pos_mask:      [bs * total_anchor_num, 1] 分类部分(cls, cnt)对应的正样本mask
+            - reg_pos_mask:  [bs * total_anchor_num, 1] 回归部分(angle, box)对应的正样本mask
     '''
     cls_targets_all_level = []
     cnt_targets_all_level = []
@@ -499,9 +517,9 @@ def FCOSAssigner(gt_boxes, gt_angles, classes, input_shape, strides=[8, 16, 32, 
         rotated_offset_x = rotated_offsets[..., 0]
         rotated_offset_y = rotated_offsets[..., 1]
         # 基于高斯分配的思想计算高斯中心
-        gaussian_center = rotated_offset_x.pow(2) / (gt_w / 2).pow(2) + rotated_offset_y.pow(2) / (gt_h / 2).pow(2)
+        gaussian_centerness = rotated_offset_x.pow(2) / (gt_w / 2).pow(2) + rotated_offset_y.pow(2) / (gt_h / 2).pow(2)
         # 4.高斯中心的限制条件
-        mask_in_gaussian = gaussian_center < 1
+        mask_in_gaussian = gaussian_centerness < 1
         # 联合考虑条件1.2.4, 筛选出正样本(离GT中点的一定椭圆区域内且在GT框内部, 且尺寸符合当前特征层), 得到pos_mask为bool型
         pos_mask = mask_in_gtboxes & mask_in_level & mask_in_gaussian 
         # 回归的正样本更严格一些 1.2.3.4
@@ -527,7 +545,7 @@ def FCOSAssigner(gt_boxes, gt_angles, classes, input_shape, strides=[8, 16, 32, 
         # 根据match_mask取出对应的正样本 [bs, h*w, max_box_nums] -> [bs, h*w] -> [bs, h*w, 1]
         angle_targets = _angles[match_mask].reshape(bs, -1, 1)
         '''基于高斯分配思想计算centerness'''
-        cnt_targets = 1 - gaussian_center[match_mask].reshape(bs, -1, 1)
+        cnt_targets = 1 - gaussian_centerness[match_mask].reshape(bs, -1, 1)
 
         '''正负样本筛选'''
         # 那些任意一个gt都没配对上的样本为负样本, 否则为正样本 [bs, h*w, max_box_nums] -> [bs, h*w]

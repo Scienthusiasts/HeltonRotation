@@ -1,7 +1,7 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'test'
+MODE = 'train'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
 BACKBONE = 'resnet50.a1_in1k'

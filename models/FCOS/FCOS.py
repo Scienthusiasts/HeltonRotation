@@ -67,7 +67,7 @@ class Model(nn.Module):
             - `batch_bboxes`: 一个batch里的GT框              例:[(1, 4), (4, 4), (4, 4), (1, 4), (5, 4), (2, 4), (3, 4), (1, 4)]
             - `batch_labels`: 一个batch里的GT框类别          例:[(1,), (4,), (4,), (1,), (5,), (2,), (3,), (1,)]
 
-        # # Returns:
+        # Returns:
             - losses: 所有损失组成的列表(里面必须有一个total_loss字段, 用于反向传播)
         '''
         batch_imgs, batch_bboxes, batch_angles, batch_labels = batch_datas[0].to(device), batch_datas[1].to(device), batch_datas[2].to(device), batch_datas[3].to(device)
