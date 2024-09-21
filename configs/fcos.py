@@ -1,13 +1,13 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'eval'
+MODE = 'test'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
 BACKBONE = 'resnet50.a1_in1k'
 BACKBONE_CKPT = "F:/Desktop/git/CKPT/HD_ckpt/ckpt/backbone_resnet50.a1_in1k.pt"
-LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness/trainval/2024-09-21-01-23-15_train/last.pt"
-TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness/trainval/2024-09-21-01-23-15_train/last.pt"
+LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner/2024-09-20-10-16-44_train/best_AP50.pt"
+TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner/2024-09-20-10-16-44_train/best_AP50.pt"
 RESUME = False
 TTA = [[640,640], [832,832], [960,960]]
 TTAOPEN = False
@@ -152,7 +152,7 @@ test = dict(
     mode = 'image',
     # '''DOTA'''
 
-    img_path = r"samples/dota1.0/P0956__1024__824___126.png",
+    img_path = r"samples\dota1.0\P2172__1024__0___58.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",
