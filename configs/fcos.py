@@ -1,7 +1,7 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'train'
+MODE = 'test'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = True
 BACKBONE = 'resnet50.a1_in1k'
@@ -15,8 +15,8 @@ TTAOPEN = False
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
 # best_AP50.pt last.pt
-# LOADCKPT = r"last.pt"
-# TESTCKPT = r"last.pt"
+LOADCKPT = r"last.pt"
+TESTCKPT = r"last.pt"
 
 
 
@@ -152,7 +152,7 @@ test = dict(
     mode = 'image',
     # '''DOTA'''
 
-    img_path = r"samples\dota1.0\P2172__1024__0___58.png",
+    img_path = r"samples\dota1.0\P2119__1024__797___436.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",
@@ -160,7 +160,7 @@ test = dict(
     ckpt_path = TESTCKPT,
     T = 0.25,
     agnostic = False,
-    show_text = False,
+    show_text = True,
     vis_heatmap = True,
     # onnx 权重路径
     onnx_path = os.path.join(onnx_export_dir, onnx_export_name),

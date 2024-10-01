@@ -235,7 +235,7 @@ def saveVisScoreMap(cnt_logit, cls_logit, image, W, H, layer, input_shape, cut_r
     # 取objmap, 并执行sigmoid将value归一化到(0,1)之间
     centerness_map = F.sigmoid(cnt_logit).numpy()
     cat_score_map = F.sigmoid(cls_logit).numpy()
-    cat_score_map = np.max(cat_score_map, axis=0)
+    cat_score_map = np.max(cat_score_map , axis=0)
     heat_map = centerness_map * cat_score_map
     heatmap2Img(heat_map, image, W, H, layer, input_shape, cut_region, save_vis_path)
 
@@ -429,7 +429,7 @@ def FCOSAssigner(gt_boxes, gt_angles, classes, input_shape, strides=[8, 16, 32, 
        添加了高斯分配策略, 具体变动如下:
        1.正样本:以GT框中点为中心的一定正方形区域 -> 以GT框中点为中心的一定正方形区域(回归) + 以GT框中点为中心的一定椭圆区域(分类)
        2.centerness: √[min(l, r)/max(l ,r) * min(t, b)/max(t ,b)] -> 1 - gaussian_centerness_dist
-       
+
         Args:
             - gt_boxes:           GT box   [[max_box_nums, 4], ..., [...]]
             - gt_angles:          GT angle [[max_box_nums,  ], ..., [...]]

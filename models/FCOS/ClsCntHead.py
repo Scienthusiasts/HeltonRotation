@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from utils.util import *
 from utils.FCOSUtils import *
 from loss.YOLOLoss import *
-
+'''相比Head, ClsCntHead的改动在于只有正样本参与分类损失, 而所有样本参与centerness损失'''
 
 
 
@@ -27,11 +27,11 @@ class ScaleExp(nn.Module):
 
 
 
-class Head(nn.Module):
+class ClsCntHead(nn.Module):
     '''FCOS的预测头模块(共享)
     '''
     def __init__(self, num_classes, in_channel=256, angle_loss_type='RotatedIoULoss'):
-        super(Head,self).__init__()
+        super(ClsCntHead,self).__init__()
         self.angle_loss_type = angle_loss_type
         self.num_classes=num_classes
         cls_branch=[]
@@ -41,11 +41,11 @@ class Head(nn.Module):
         for _ in range(4):
             # 分类分支特征提取(cls和centerness)
             cls_branch.append(nn.Conv2d(in_channel, in_channel, kernel_size=3, padding=1, bias=True))
-            cls_branch.append(nn.GroupNorm(32, in_channel)),
+            cls_branch.append(nn.GroupNorm(32, in_channel))
             cls_branch.append(nn.ReLU(True))
             # 回归分支特征提取(reg)
             reg_branch.append(nn.Conv2d(in_channel, in_channel, kernel_size=3, padding=1, bias=True))
-            reg_branch.append(nn.GroupNorm(32, in_channel)),
+            reg_branch.append(nn.GroupNorm(32, in_channel))
             reg_branch.append(nn.ReLU(True))
 
         # 预测头之前的共享特征提取
@@ -63,7 +63,7 @@ class Head(nn.Module):
         self.scale_exp = nn.ModuleList([ScaleExp(1) for _ in range(5)])
         '''定义损失函数'''
         self.cntLoss = nn.BCEWithLogitsLoss()
-        self.clsLoss = Loss(loss_type='FocalLoss', gamma=2.0, alpha=0.25, reduction='none')
+        self.clsLoss = Loss(loss_type='FocalLoss', gamma=2.0, alpha=0.25, reduction='mean') 
         self.boxLoss = Loss(loss_type='GIoULoss', reduction='mean')
         self.IoUSmoothl1Loss = IOUSmoothL1Loss()
         self.RIoULoss = RotatedIoULoss()
@@ -111,8 +111,8 @@ class Head(nn.Module):
         # 获得正样本(bool) [bs, total_anchor_num]
         pos_mask = pos_mask.reshape(-1)
         reg_pos_mask = reg_pos_mask.reshape(-1)
-        '''计算损失'''
-        # 调整预测结果的形状:
+
+        '''调整预测结果的形状'''
         # [[bs, cls_num, h, w],...,[[bs, cls_num, 5, 5]]] -> [bs * total_anchor_num, cls_num]
         cls_preds = reshape_cat_out(cls_logits).reshape(-1, self.num_classes)
         # [[bs, 1, h1, w1],...,[[bs, 1, h5, w5]]] -> [bs * total_anchor_num, 1]
@@ -123,16 +123,15 @@ class Head(nn.Module):
         angle_preds = reshape_cat_out(angle_preds).reshape(-1, 1)
 
         # 计算损失:
-        '''分类损失(所有样本均参与计算)'''
-        # 计算batch里每张图片的正样本数量 [bs,]
-        num_pos = torch.sum(pos_mask).clamp_(min=1).float()
+        '''分类损失(正样本才计算)'''
         # 生成one_hot标签(当标签是负样本(-1)时, onehot标签则全为0)
         cls_targets  = (torch.arange(0, self.num_classes, device=cls_targets.device)[None,:] == cls_targets).float()
-        cls_loss = self.clsLoss(cls_preds, cls_targets).sum() / torch.sum(num_pos)
+        cls_loss = self.clsLoss(cls_preds[pos_mask], cls_targets[pos_mask])
 
-        '''centerness损失(正样本才计算)'''
+        '''centerness损失(所有样本均参与计算)'''
         # 计算BCE损失
-        cnt_loss = self.cntLoss(cnt_preds[pos_mask], cnt_targets[pos_mask])
+        cnt_targets[cnt_targets==-1] = 0
+        cnt_loss = self.cntLoss(cnt_preds, cnt_targets)
 
         # 格式调整
         # 角度均为归一化角度, [-180, 0)->[0, 1)
@@ -206,7 +205,7 @@ if __name__ == '__main__':
     size = [80, 40, 20, 10, 5]
     # 模拟FPN输出:
     x = [torch.rand((bs, fpn_out_channel, lvl_size, lvl_size)) for lvl_size in size]
-    head = Head(num_cls, fpn_out_channel)
+    head = ClsCntHead(num_cls, fpn_out_channel)
     cls_logits, cnt_logits, reg_preds = head(x)
 
     for cls, cnt, reg in zip(cls_logits, cnt_logits, reg_preds):

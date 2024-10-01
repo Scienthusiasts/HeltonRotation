@@ -7,7 +7,7 @@ from utils.metrics import *
 from models.FCOS.Backbone import *
 from models.FCOS.FPN import *
 from models.FCOS.Head import *
-
+from models.FCOS.ClsCntHead import *
 
 
 
@@ -34,7 +34,8 @@ class Model(nn.Module):
         # Backbone最好使用原来的预训练权重初始化
         self.backbone = Backbone(**backbone)
         self.fpn = FPN(C3_channel=model_param[2], C4_channel=model_param[1], C5_channel=model_param[0])
-        self.head = Head(**head)
+        # self.head = Head(**head)
+        self.head = ClsCntHead(**head)
         '''TTA增强'''
         self.tta = TTA(tta_img_size=tta_img_size)
         # 是否导入预训练权重
