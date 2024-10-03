@@ -59,6 +59,10 @@
 
 - 针对FCOS-obb，添加了高斯椭圆正负样本分配策略
 
+**update 24/10/1**
+
+- 支持更多学习率衰减策略
+
 ## Demo
 
 ![1](https://github.com/Scienthusiasts/HeltonRotation/blob/dev/demo/demo.png)

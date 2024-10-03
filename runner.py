@@ -38,6 +38,7 @@ class Runner():
                  test:dict, 
                  model:dict, 
                  optimizer:dict,
+                 scheduler:dict,
                  merge:bool):
         '''Runner初始化
         Args:
@@ -117,10 +118,8 @@ class Runner():
 
         '''定义优化器(自适应学习率的带动量梯度下降方法)'''
         if mode in ['train', 'train_ddp']:
-            self.optimizer, self.scheduler = optimSheduler(**optimizer, 
-                                                           model=self.model, 
-                                                           total_epoch=self.epoch, 
-                                                           train_data_loader=self.train_data_loader)
+            self.optimizer = selectOptimizer(**optimizer, model=self.model)
+            self.scheduler = selectScheduler(**scheduler, optimizer=self.optimizer, total_epoch=self.epoch, train_data_loader=self.train_data_loader)
 
         '''是否恢复断点训练'''
         self.start_epoch = 0
