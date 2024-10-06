@@ -15,8 +15,8 @@ TTAOPEN = False
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
 # best_AP50.pt last.pt
-LOADCKPT = r"last.pt"
-TESTCKPT = r"last.pt"
+# LOADCKPT = r"last.pt"
+# TESTCKPT = r"last.pt"
 
 
 
@@ -163,7 +163,7 @@ test = dict(
     mode = 'image',
     # '''DOTA'''
 
-    img_path = r"samples\dota1.0\P2119__1024__797___436.png",
+    img_path = r"samples\dota1.0\P2139__1024__0___86.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",
