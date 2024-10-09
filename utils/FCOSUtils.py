@@ -236,7 +236,7 @@ def saveVisScoreMap(cnt_logit, cls_logit, image, W, H, layer, input_shape, cut_r
     centerness_map = F.sigmoid(cnt_logit).numpy()
     cat_score_map = F.sigmoid(cls_logit).numpy()
     cat_score_map = np.max(cat_score_map , axis=0)
-    heat_map = centerness_map * cat_score_map
+    heat_map = cat_score_map * centerness_map
     heatmap2Img(heat_map, image, W, H, layer, input_shape, cut_region, save_vis_path)
 
 
@@ -418,7 +418,7 @@ def computeGIoU(preds, targets):
 #         # 3.正样本与GT的中心点距离小于radiu
 #         mask_center = c_off_max < radiu
 #         # 联合考虑条件1.2.3, 筛选出正样本(离GT中点的一定正方形区域内且在GT框内部, 且尺寸符合当前特征层), 得到pos_mask为bool型
-#         pos_mask = mask_in_gtboxes & mask_in_level & mask_center
+#         pos_mask = mask_in_level & mask_center # & mask_in_gtboxes 
 #         # 将所有不是正样本的特征点，面积设成max [bs, h*w, gt_nums](其实就是标记为负样本)
 #         areas[~pos_mask] = float('inf')
 #         # 选取特征点对应面积最小的框对应的索引 [bs, h*w, gt_nums] -> [bs, h*w] (其实就是筛选出每个grid匹配的GT框)
@@ -579,7 +579,7 @@ def FCOSAssigner(gt_boxes, gt_angles, gt_labels, input_shape, strides=[8, 16, 32
         # 4.高斯中心的限制条件
         mask_in_gaussian = gaussian_centerness < 1
         # 联合考虑条件1.2.4, 筛选出正样本(离GT中点的一定椭圆区域内且在GT框内部, 且尺寸符合当前特征层), 得到pos_mask为bool型
-        pos_mask = mask_in_gtboxes & mask_in_level & mask_in_gaussian 
+        pos_mask = mask_in_level & mask_in_gaussian # & mask_in_gtboxes 
         # 回归的正样本更严格一些 1.2.3.4
         reg_pos_mask = pos_mask & mask_center
 

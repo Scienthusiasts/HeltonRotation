@@ -267,12 +267,14 @@ class Runner():
 
 
 
-    def evaler(self, epoch, model=False, inferring=True, ckpt_path=None, T=0.01, fuse=False, merge=False, eval_ann_dir=False, imgset_file_path=False):
+    def evaler(self, epoch, model=False, inferring=True, ckpt_path=None, T=0.01, fuse=False, merge=False, eval_ann_dir=False, imgset_file_path=False, log_dir=False):
         '''一个epoch的验证(验证集)
         '''
-        # 这部分当merge=True时使用传参(使用DOTA未裁剪前的txt)
-        eval_ann_dir = eval_ann_dir if merge else self.eval_ann_dir
+        # 这部分当merge=True时使用传参(使用DOTA未裁剪前的txt) 
+        eval_ann_dir = self.eval_ann_dir if not merge else eval_ann_dir
         imgset_file_path = imgset_file_path if merge else self.imgset_file_path
+        # 这部分inferring=False时也使用传参(使用之前的推理结果)
+        log_dir = self.log_dir if inferring else log_dir
 
         if model == False:
             model=self.model
@@ -284,7 +286,7 @@ class Runner():
                     self.val_img_dir, \
                     imgset_file_path, \
                     eval_ann_dir, \
-                    self.log_dir, \
+                    log_dir, \
                     T=T, \
                     model=model, \
                     inferring=inferring, \

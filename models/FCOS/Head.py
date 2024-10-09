@@ -113,7 +113,7 @@ class Head(nn.Module):
         reg_pos_mask = reg_pos_mask.reshape(-1)
         '''计算损失'''
         # 调整预测结果的形状:
-        # [[bs, cls_num, h, w],...,[[bs, cls_num, 5, 5]]] -> [bs * total_anchor_num, cls_num]
+        # [[bs, cls_num, h1, w1],...,[[bs, cls_num, h5, w5]]] -> [bs * total_anchor_num, cls_num]
         cls_preds = reshape_cat_out(cls_logits).reshape(-1, self.num_classes)
         # [[bs, 1, h1, w1],...,[[bs, 1, h5, w5]]] -> [bs * total_anchor_num, 1]
         cnt_preds = reshape_cat_out(cnt_logits).reshape(-1, 1)
@@ -127,7 +127,7 @@ class Head(nn.Module):
         # 计算batch里每张图片的正样本数量 [bs,]
         num_pos = torch.sum(pos_mask).clamp_(min=1).float()
         # 生成one_hot标签(当标签是负样本(-1)时, onehot标签则全为0)
-        cls_targets  = (torch.arange(0, self.num_classes, device=cls_targets.device)[None,:] == cls_targets).float()
+        cls_targets = (torch.arange(0, self.num_classes, device=cls_targets.device)[None,:] == cls_targets).float()
         cls_loss = self.clsLoss(cls_preds, cls_targets).sum() / torch.sum(num_pos)
 
         '''centerness损失(正样本才计算)'''
