@@ -63,6 +63,10 @@
 
 - 支持更多学习率衰减策略
 
+**update 24/10/12**
+
+- add prototypes for experimental validate
+
 ## Demo
 
 ![1](https://github.com/Scienthusiasts/HeltonRotation/blob/dev/demo/demo.png)

@@ -6,11 +6,11 @@ MODE = 'test'
 FROZEBACKBONE = True
 BACKBONE = 'resnet50.a1_in1k'
 BACKBONE_CKPT = "F:/Desktop/git/CKPT/HD_ckpt/ckpt/backbone_resnet50.a1_in1k.pt"
-# "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/2024-10-08-00-54-22_train/last.pt"
+# "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/2024-10-08-00-54-22_train_A6000/last.pt"
 # "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner/2024-10-07-12-13-28_train_A6000/last.pt"
 # "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness/2024-09-10-10-52-15_train/last.pt"
-LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/2024-10-08-00-54-22_train/last.pt"
-TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/2024-10-08-00-54-22_train/last.pt"
+LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/2024-10-08-00-54-22_train_A6000/last.pt"
+TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/2024-10-08-00-54-22_train_A6000/last.pt"
 RESUME = False
 TTA = [[640,640], [832,832], [960,960]]
 TTAOPEN = False
@@ -171,7 +171,7 @@ test = dict(
     mode = 'image',
     # '''DOTA'''
 
-    img_path = r"samples/dota1.0/P1936__1024__0___54.png",
+    img_path = r"samples\dota1.0\P1936__1024__0___54.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",
@@ -179,7 +179,7 @@ test = dict(
     ckpt_path = TESTCKPT,
     T = 0.25,
     agnostic = False,
-    show_text = True,
+    show_text = False,
     vis_heatmap = True,
     # onnx 权重路径
     onnx_path = os.path.join(onnx_export_dir, onnx_export_name),

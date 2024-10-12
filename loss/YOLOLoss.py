@@ -204,3 +204,40 @@ class RotatedIoULoss(nn.Module):
             raise NotImplementedError
         # 返回loss和riou(计算obj_loss用得到)
         return loss.mean(), ious
+    
+
+
+
+
+
+class InfoNCELoss(nn.Module):
+    '''InfoNCELoss
+    '''
+    def __init__(self, t=0.07, reduction='mean'):
+        super(InfoNCELoss, self).__init__()
+        self.loss = nn.CrossEntropyLoss(reduction=reduction)
+        # 温度超参数
+        self.t = t
+    
+
+    def forward(self, vec1, vec2):
+        # 先计算两个向量相似度
+        sim_logits = self.COSSim(vec1, vec2) / self.t
+        # 生成对比标签(对角线为1其余为0)
+        labels = torch.arange(vec1.shape[0]).to(vec1.device)
+        # 相似度结果作为logits计算交叉熵损失
+        loss = self.loss(sim_logits, labels)
+        return loss
+
+
+    # 计算图像和文本的余弦相似度
+    @staticmethod
+    def COSSim(vec1, vec2):
+        '''计算图像和文本的余弦相似度
+        '''
+        # 特征向量归一化
+        vec1 = vec1 / vec1.norm(dim=-1, keepdim=True)
+        vec2 = vec2 / vec2.norm(dim=-1, keepdim=True)
+        # 计算余弦相似度
+        logits = vec1 @ vec2.t()
+        return logits

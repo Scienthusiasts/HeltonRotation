@@ -8,7 +8,7 @@ from models.FCOS.Backbone import *
 from models.FCOS.FPN import *
 from models.FCOS.Head import *
 from models.FCOS.ClsCntHead import *
-
+from models.FCOS.ProtoHead import ProtoHead
 
 
 class Model(nn.Module):
@@ -35,7 +35,8 @@ class Model(nn.Module):
         self.backbone = Backbone(**backbone)
         self.fpn = FPN(C3_channel=model_param[2], C4_channel=model_param[1], C5_channel=model_param[0])
         # self.head = Head(**head)
-        self.head = ClsCntHead(**head)
+        # self.head = ClsCntHead(**head)
+        self.head = ProtoHead(**head)
         '''TTA增强'''
         self.tta = TTA(tta_img_size=tta_img_size)
         # 是否导入预训练权重

@@ -4,6 +4,7 @@ log/
 ckpt/
 samples/
 onnx_ckpt/
+vis_prototype/
 debug.txt
 plot_dataset.jpg
 kmeans_for_anchors.jpg
