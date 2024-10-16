@@ -20,7 +20,7 @@ class FCOSPrototype(nn.Module):
                 - decay:    ema的衰减率
                 - beta:     ema衰减的超参(单位iter), 越大则decay越慢到达最大值
                 - updates:  当前已经ema更新了多少次模型(resume时不为0)
-                - mode:     prototype更新方式(contrast, ema)
+                - mode:     prototype更新方式(contrast, ema, self_contrast, )
             # Returns:
                 None
         '''
@@ -41,14 +41,25 @@ class FCOSPrototype(nn.Module):
         # mode='contrast'用到
         self.contrast_loss = InfoNCELoss(t=0.07, reduction='none')
 
+
     def forward(self, cls_feats, cls_targets):
+        '''前向过程+损失计算
+        '''
         self.update_mem_bank(cls_feats, cls_targets)
         if self.mode == 'ema':
-            loss = self.ema_update(device=cls_feats[0].device)   
-        if self.mode == 'contrast':
-            loss = self.contrast_learning_update(device=cls_feats[0].device)
-        return loss
+            prototype_loss = self.ema_update(device=cls_feats[0].device)   
+        elif self.mode in ['contrast', 'self_contrast']:
+            prototype_loss = self.contrast_learning_update(device=cls_feats[0].device)
 
+        self.updates += 1
+
+        if self.mode in ['ema', 'contrast']:
+            return prototype_loss
+        elif self.mode == 'self_contrast':
+            # prototypes之间进行对比学习
+            prototype_contrast_loss = self.prototypes_contrast()
+            return prototype_loss, prototype_contrast_loss
+            
 
     def update_mem_bank(self, feat, cat_gt):
         '''更新memory bank
@@ -60,6 +71,7 @@ class FCOSPrototype(nn.Module):
         '''
         # 逐类别更新mem_bank
         for i in range(self.cat_nums):
+            if i == self.cat_nums: i = -1
             # 找到对应类别下的正样本索引
             cat_idx, _ = torch.where(cat_gt==i)
             # 当前batch有这个类别的正样本才更新
@@ -80,7 +92,6 @@ class FCOSPrototype(nn.Module):
             self.prototypes = self.prototypes.to(device)
             self.delta_prototype = self.delta_prototype.to(device)
         d = self.decay(self.updates)
-        self.updates += 1
         # 逐类别ema更新prototypes
         for i in range(self.cat_nums):
             # 当前batch有这个类别的正样本才更新
@@ -109,7 +120,6 @@ class FCOSPrototype(nn.Module):
         if self.updates == 0:
             self.prototypes = self.prototypes.to(device)
             self.delta_prototype = self.delta_prototype.to(device)
-        self.updates += 1
         # not_None_idx用于记录哪些类别在当前batch有正样本
         not_None_idx = []
         # 更新delta_prototype
@@ -127,3 +137,9 @@ class FCOSPrototype(nn.Module):
         loss = self.contrast_loss(self.prototypes, self.delta_prototype)[not_None_idx].mean()
         return loss
 
+
+    def prototypes_contrast(self, ):
+        '''prototypes之间进行对比学习
+        '''
+        loss = self.contrast_loss(self.prototypes, self.prototypes).mean()
+        return loss

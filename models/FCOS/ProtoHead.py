@@ -9,7 +9,7 @@ from loss.YOLOLoss import *
 from models.FCOS.Prototype import FCOSPrototype
 
 import matplotlib.pyplot as plt
-
+from copy import deepcopy
 
 
 class ScaleExp(nn.Module):
@@ -105,17 +105,52 @@ class ProtoHead(nn.Module):
             return cls_logits, cnt_logits, reg_preds, angle_preds, cls_feats
         elif mode == 'infer':
             return cls_logits, cnt_logits, reg_preds, angle_preds
-        
         # 仅实验验证时使用, 之后删除
         elif mode == 'exp':
-            self.vis_prototype_active_map(cls_feats, )
-            return cls_logits, cnt_logits, reg_preds, angle_preds
-
+            # active_id_map, active_score_map = self.vis_prototype_active_map(cls_feats, )
+            active_id_map, active_score_map = self.vis_cls_map(cls_logits, )
+            mat = self.vis_prototype_contrast_matrix()
         
+            '''可视化'''
+            plt.figure(figsize = (10, 8))
+            i = 1
+            rol, col = 4, 5
+            # 可视化最大激活热力图
+            for map in active_score_map:
+                plt.subplot(rol, col, i)
+                plt.imshow(map.cpu().numpy(), cmap='jet', vmin=0, vmax=1)
+                plt.axis('off')
+                i += 1
+
+            # 可视化类别激活热力图
+            vis_cat = [7, 8]
+            for cat in vis_cat:
+                for map, id_map in zip(active_score_map, active_id_map):
+                    plt.subplot(rol, col, i)
+                    cat_map = map.clone()
+                    cat_map[id_map!=cat]=0
+                    plt.imshow(cat_map.cpu().numpy(), cmap='jet', vmin=0, vmax=1)
+                    plt.axis('off')
+                    i += 1
+
+            # 可视化对比矩阵
+            plt.subplot(rol, col, i)
+            plt.imshow(mat.cpu().numpy(), cmap='jet', vmin=0, vmax=1)
+            plt.axis('off')
+            i += 1
+
+            plt.subplots_adjust(left=0.01, bottom=0.01, right=0.99, top=0.99, wspace=0.01, hspace=0.01)
+            plt.savefig(f'./vis_prototype/prototype_score_map.jpg', dpi=300)  
+
+            return cls_logits, cnt_logits, reg_preds, angle_preds
+        
+
     def vis_prototype_active_map(self, cls_feats):
         '''可视化class-wise prototype相对于特征图的激活情况
         '''
         # 遍历所有尺度特征图
+        active_score_map = []
+        active_id_map = []
         for lvl_id in range(len(cls_feats)):
             lvl_cls_feat = cls_feats[lvl_id].squeeze()
             lvl_cat_active_score_map = []
@@ -129,13 +164,36 @@ class ProtoHead(nn.Module):
             # 整合所有类别的score
             lvl_cat_active_score_map = torch.stack(lvl_cat_active_score_map, dim=0)
             lvl_active_score_map, lvl_active_id_map = torch.max(lvl_cat_active_score_map, axis=0)
-            lvl_active_score_map[lvl_active_id_map!=7]=0
-            # print(lvl_cat_active_score_map.shape)
-            # 简易可视化
-            plt.imshow(lvl_active_score_map.cpu().numpy(), cmap='jet')
-            plt.axis('off')
-            plt.savefig(f'./vis_prototype/layer_{lvl_id}.jpg', bbox_inches='tight', pad_inches=0.0)  
+            active_id_map.append(lvl_active_id_map)
+            active_score_map.append(lvl_active_score_map)
+            
+        return active_id_map, active_score_map
 
+
+
+    def vis_cls_map(self, cls_logits, cnt_logits):
+        '''可视化分类头输出的特征图
+        '''
+        # 遍历所有尺度特征图
+        active_score_map = []
+        active_id_map = []
+        for lvl_id in range(len(cls_logits)):
+            lvl_cnt_logits = F.sigmoid(cnt_logits[lvl_id][0,0,...])
+            lvl_cls_logits = F.sigmoid(cls_logits[lvl_id][0])
+            lvl_active_score_map, lvl_active_id_map = torch.max(lvl_cls_logits * lvl_cnt_logits, axis=0)
+            active_id_map.append(lvl_active_id_map)
+            active_score_map.append(lvl_active_score_map)
+            
+        return active_id_map, active_score_map
+    
+
+
+    def vis_prototype_contrast_matrix(self, ):
+        '''可视化class-wise prototype的对比矩阵
+        '''
+        prototype_norm = self.prototype.prototypes / self.prototype.prototypes.norm(dim=1, keepdim=True)
+        mat = prototype_norm @ prototype_norm.T
+        return mat
 
 
 
@@ -166,10 +224,7 @@ class ProtoHead(nn.Module):
         cls_feats = reshape_cat_out(cls_feats).reshape(-1, self.in_channel)
     
         '''更新prototypes'''
-        if self.prototype.mode in ['ema', 'contrast']:
-            prototype_loss = self.prototype(cls_feats[pos_mask], cls_targets[pos_mask])
-        if self.prototype.mode == 'focalloss':
-            prototype_loss = self.prototype(cls_feats, cls_targets)
+        prototype_loss, prototype_contrast_loss = self.prototype(cls_feats.detach(), cls_targets)
 
         '''分类损失(所有样本均参与计算)'''
         # 计算batch里每张图片的正样本数量 [bs,]
@@ -219,12 +274,13 @@ class ProtoHead(nn.Module):
 
         '''loss以字典形式回传'''
         loss = dict(
-            total_loss = cls_loss + cnt_loss + reg_loss + theta_loss + prototype_loss,
+            total_loss = cls_loss + cnt_loss + reg_loss + theta_loss + prototype_loss + prototype_contrast_loss,
             cls_loss = cls_loss,
             cnt_loss = cnt_loss,
             reg_loss = reg_loss,
             theta_loss = theta_loss,
-            prototype_loss = prototype_loss
+            prototype_loss = prototype_loss,
+            prototype_contrast_loss = prototype_contrast_loss
         )
         return loss  
 
