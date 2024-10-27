@@ -388,23 +388,25 @@ def longsideFormat2OpenCVFormat(x_c, y_c, longside, shortside, theta_longside):
 if __name__ == '__main__':
     '''标注格式转换'''
     img_size = 1024
-    mode = 'val'
-    img_dir = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/{mode}/images'
-    ann_dir = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/{mode}/annfiles'
-    tgt_dir = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/{mode}/yolo_hbox_annfiles'
-    json_path = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/coco_ann/hbox_{mode}.json'
+    version = '1.5'
+    mode = 'train'
+    img_dir = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0-1.5_ss_size-1024_gap-200/{mode}/images'
+    ann_dir = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0-1.5_ss_size-1024_gap-200/{mode}/{version}/annfiles'
+    hbox_tgt_dir = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0-1.5_ss_size-1024_gap-200/{mode}/{version}/yolo_hbox_annfiles'
+    rbox_tgt_dir = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0-1.5_ss_size-1024_gap-200/{mode}/{version}/yolo_longside_format_annfiles'
+    json_path = f'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0-1.5_ss_size-1024_gap-200/{mode}/{version}/coco_ann/hbox_{mode}.json'
     cat_names2id = {
         'plane':0, 'baseball-diamond':1, 'bridge':2, 'ground-track-field':3,
         'small-vehicle':4, 'large-vehicle':5, 'ship':6, 'tennis-court':7,
         'basketball-court':8, 'storage-tank':9, 'soccer-ball-field':10, 
-        'roundabout':11, 'harbor':12, 'swimming-pool':13, 'helicopter':14
+        'roundabout':11, 'harbor':12, 'swimming-pool':13, 'helicopter':14, 'container-crane':15
     }
 
     # 将DOTA格式的标注txt文件(8参表示法)转为YOLO归一化格式的长边表示法的标注txt文件(5参表示法)
-    # DOTAtxt2LongSideFormatYOLOtxt(ann_dir, tgt_dir, cat_names2id, img_size)
+    DOTAtxt2LongSideFormatYOLOtxt(ann_dir, rbox_tgt_dir, cat_names2id, img_size)
 
     # 将DOTA格式的标注txt文件(8参表示法)转为YOLO归一化格式的水平框txt文件(4参表示法)
-    DOTAtxt2HBoxYOLOtxt(ann_dir, tgt_dir, cat_names2id, img_size)
+    # DOTAtxt2HBoxYOLOtxt(ann_dir, hbox_tgt_dir, cat_names2id, img_size)
 
     # 将DOTA格式的标注txt文件(8参表示法)转为COCO格式的json文件(8参表示法)
     # DOTAtxt2COCOjson(ann_dir, img_dir, cat_names2id, json_path, mode='YOLO', imgFormat='png')

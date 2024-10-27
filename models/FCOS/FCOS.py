@@ -34,9 +34,9 @@ class Model(nn.Module):
         # Backbone最好使用原来的预训练权重初始化
         self.backbone = Backbone(**backbone)
         self.fpn = FPN(C3_channel=model_param[2], C4_channel=model_param[1], C5_channel=model_param[0])
-        # self.head = Head(**head)
+        self.head = Head(**head)
         # self.head = ClsCntHead(**head)
-        self.head = ProtoHead(**head)
+        # self.head = ProtoHead(**head)
         '''TTA增强'''
         self.tta = TTA(tta_img_size=tta_img_size)
         # 是否导入预训练权重

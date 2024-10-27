@@ -6,11 +6,13 @@ MODE = 'test'
 FROZEBACKBONE = True
 BACKBONE = 'resnet50.a1_in1k'
 BACKBONE_CKPT = "F:/Desktop/git/CKPT/HD_ckpt/ckpt/backbone_resnet50.a1_in1k.pt"
-# "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/2024-10-08-00-54-22_train_A6000/last.pt"
+# "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/center1/2024-10-09-01-18-50_train/last.pt"
+# "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/center0.7/2024-10-08-18-03-29_train/last.pt"
+# "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/center0.5/2024-10-08-21-41-08_train/last.pt"
 # "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner/2024-10-07-12-13-28_train_A6000/last.pt"
 # "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness/2024-09-10-10-52-15_train/last.pt"
-LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/2024-10-08-00-54-22_train_A6000/last.pt"
-TESTCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/2024-10-08-00-54-22_train_A6000/last.pt"
+LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/center0.5/2024-10-08-21-41-08_train/last.pt"
+TESTCKPT = LOADCKPT
 RESUME = False
 TTA = [[640,640], [832,832], [960,960]]
 TTAOPEN = False
@@ -18,8 +20,8 @@ TTAOPEN = False
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
 # best_AP50.pt last.pt
-LOADCKPT = r"last.pt"
-TESTCKPT = r"last.pt"
+# LOADCKPT = r"last.pt"
+# TESTCKPT = r"last.pt"
 
 
 
@@ -171,7 +173,7 @@ test = dict(
     mode = 'image',
     # '''DOTA'''
 
-    img_path = r"samples\dota1.0\P1936__1024__0___54.png",
+    img_path = r"samples/dota1.0/P1936__1024__0___54.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",

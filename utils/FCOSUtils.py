@@ -212,31 +212,26 @@ def vis_FCOS_heatmap(cls_logits, cnt_logits, ori_shape, input_shape, image, box_
         cnt_logit = cnt_logit[0,0,...]
         # [bs=1,w,h] -> [w,h]
         cls_logit = cls_logit[0,...]
-        '''提取centerness-map(类别无关的obj置信度)'''
-        # saveVisCenternessMap(cnt_logit, image, W, H, layer, input_shape, cut_region, save_vis_path)
         '''提取类别最大置信度heatmap(类别最大置信度*centerness)'''
-        saveVisScoreMap(cnt_logit, cls_logit, image, W, H, layer, input_shape, cut_region, save_vis_path)
+        saveVisScoreMap(cnt_logit, cls_logit, image, W, H, layer, input_shape, cut_region, save_vis_path, mode='centerness')
 
 
 
-def saveVisCenternessMap(cnt_logit, image, W, H, layer, input_shape, cut_region, save_vis_path):
-    '''提取objmap(类别无关的obj置信度)
-    '''
-    # 取objmap, 并执行sigmoid将value归一化到(0,1)之间
-    heat_map = F.sigmoid(cnt_logit).numpy()
-    # resize到网络接受的输入尺寸
-    heat_map = cv2.resize(heat_map, (input_shape[0], input_shape[1]))
-    heatmap2Img(heat_map, image, W, H, layer, input_shape, cut_region, save_vis_path)
 
 
-def saveVisScoreMap(cnt_logit, cls_logit, image, W, H, layer, input_shape, cut_region, save_vis_path):
+def saveVisScoreMap(cnt_logit, cls_logit, image, W, H, layer, input_shape, cut_region, save_vis_path, mode):
     '''提取类别最大置信度heatmap(类别最大置信度*centerness)
     '''
     # 取objmap, 并执行sigmoid将value归一化到(0,1)之间
     centerness_map = F.sigmoid(cnt_logit).numpy()
     cat_score_map = F.sigmoid(cls_logit).numpy()
     cat_score_map = np.max(cat_score_map , axis=0)
-    heat_map = cat_score_map * centerness_map
+    if mode == 'centerness':
+        heat_map = centerness_map
+    elif mode == 'cat_score':
+        heat_map = cat_score_map
+    elif mode == 'joint_score':
+        heat_map = cat_score_map * centerness_map
     heatmap2Img(heat_map, image, W, H, layer, input_shape, cut_region, save_vis_path)
 
 
