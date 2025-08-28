@@ -43,6 +43,7 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
             FRCNNDataset
         '''      
         '''max_boxes是FOCS独有的, 用来padding不同图像间box数量不同的问题'''
+        self.epoch_random = 0
         self.max_boxes = 350 # 400
         self.sample_by_freq = sample_by_freq
         self.mode = trainMode
@@ -357,7 +358,9 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
     # 为每个 worker 设置了一个基于初始种子和 worker ID 的独特的随机种子, 这样每个 worker 将产生不同的随机数序列，从而有助于数据加载过程的随机性和多样性
     @staticmethod
     def worker_init_fn(worker_id, seed, rank=0):
-        worker_seed = rank + seed
+        # rank*1000 + worker_id 避免每一个子进程数据采样重复
+        worker_seed = seed + rank
+        # worker_seed = seed + rank*1000 + worker_id
         random.seed(worker_seed)
         np.random.seed(worker_seed)
         torch.manual_seed(worker_seed)

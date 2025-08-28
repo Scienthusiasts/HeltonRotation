@@ -7,8 +7,6 @@ from utils.metrics import *
 from models.FCOS.Backbone import *
 from models.FCOS.FPN import *
 from models.FCOS.Head import *
-from models.FCOS.ClsCntHead import *
-from models.FCOS.ProtoHead import ProtoHead
 
 
 class Model(nn.Module):

@@ -1,32 +1,31 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'test'
+MODE = 'train_ddp'
+log_name = 'fcos_3x_bs4_adamw_coslr5e-4_riou_ga_ddp'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
-FROZEBACKBONE = True
+FROZEBACKBONE = False
 BACKBONE = 'resnet50.a1_in1k'
-BACKBONE_CKPT = "F:/Desktop/git/CKPT/HD_ckpt/ckpt/backbone_resnet50.a1_in1k.pt"
-# "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/center1/2024-10-09-01-18-50_train/last.pt"
-# "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/center0.7/2024-10-08-18-03-29_train/last.pt"
-# "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/center0.5/2024-10-08-21-41-08_train/last.pt"
-# "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner/2024-10-07-12-13-28_train_A6000/last.pt"
-# "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness/2024-09-10-10-52-15_train/last.pt"
-LOADCKPT = "F:/Desktop/git/CKPT/HR_ckpt/rotated_fcos/theta-weight1_adamw_lr1e-3_rotatediouloss_reg-centerness_gaussian-assigner-wo-mask-in-gtboxes/center0.5/2024-10-08-21-41-08_train/last.pt"
+BACKBONE_CKPT = "/data/yht/code/HeltonRotation/ckpts/backbone_resnet50.a1_in1k.pt"
+
+LOADCKPT = False
 TESTCKPT = LOADCKPT
 RESUME = False
 TTA = [[640,640], [832,832], [960,960]]
 TTAOPEN = False
+lr=0.0005
+epoch = 3*12 + 1
+bs = 2
 
+TESTCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5s_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval_modifyaug/2024-07-29-17-25-45_train/last.pt"
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
-# best_AP50.pt last.pt
-# LOADCKPT = r"last.pt"
-# TESTCKPT = r"last.pt"
-
+TESTCKPT = LOADCKPT
 
 
 
 '''DOTA'''
+version = 1.0
 CATNUMS = 15
 IMGSIZE = [1024, 1024]
 ann_mode = 'yolo'
@@ -42,14 +41,14 @@ cat_names2id = {
 }
 reverse_map = None
 ann_name = {'dota':'annfiles', 'yolo':'yolo_longside_format_annfiles'}[ann_mode]
-train_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/train/images"
-train_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/train/{ann_name}"
+train_img_dir = "/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/train/images"
+train_ann_dir = f"/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/train/{version}/{ann_name}"
 # 要推理test测试集时只需修改val_img_dir:
-val_img_dir = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/images"
-val_ann_dir = f"F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/{ann_name}"
+val_img_dir = "/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/val/images"
+val_ann_dir = f"/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/val/{version}/{ann_name}"
 # 这两个评估时会用到, 其中eval_ann_dir里的txt是基于DOTA八参格式
-imgset_file_path = "F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val_img_name.txt"
-eval_ann_dir = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_gap-200/val/annfiles'
+imgset_file_path = "/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/val_img_name.txt"
+eval_ann_dir = f'/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/val/{version}/annfiles'
 
 
 
@@ -60,20 +59,20 @@ eval_ann_dir = 'F:/Desktop/master/datasets/RemoteSensing/DOTA-1.0_ss_size-1024_g
 
 
 runner = dict(
-    seed = 22,
+    seed = 42,
     mode = MODE,
     resume = RESUME,
     img_size = IMGSIZE,
-    epoch = 12*4,
-    log_dir = f'./log/tmp_exp/{MODE}',
-    log_interval = 1,
-    eval_interval = 1,
+    epoch = epoch,
+    log_dir = f'./log/{log_name}/{MODE}',
+    log_interval = 50,
+    eval_interval = 2,
     reverse_map = reverse_map,
     class_names = cat_names, 
     merge = False,
     dataset = dict(
-        bs = 4,
-        num_workers = 0,
+        bs = bs,
+        num_workers = 8,
         # 自定义的Dataset:
         my_dataset = dict(
             path = 'datasets/FCOSDataset.py',
@@ -91,7 +90,7 @@ runner = dict(
                 trainMode=True, 
                 filter_empty_gt=True,
                 # sample_by_freq 目前还是只支持yolo格式处理
-                sample_by_freq = True,
+                sample_by_freq = False,
             ),
             val_dataset = dict( 
                 cat_names2id = cat_names2id,
@@ -137,17 +136,17 @@ runner = dict(
     ),
     optimizer = dict(
         optim_type = 'adamw',
-        lr = 1e-3,
+        lr = lr,
     ),
     scheduler = dict(
         scheduler_type = 'CosineLR',
-        lr = 1e-3,
+        lr = lr,
         lr_min_ratio = 0.1,
         warmup_lr_init_ratio = 0.01,
     ),
     # scheduler = dict(
     #     scheduler_type = 'ConditionalStepLR',
-    #     lr = 1e-3,
+    #     lr = lr,
     #     warmup_lr_init_ratio = 0.01,
     #     decay_rate = 0.1,
     #     decay_t_list = [6/9, 8/9]
