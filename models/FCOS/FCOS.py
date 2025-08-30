@@ -44,23 +44,30 @@ class Model(nn.Module):
             self = loadWeightsBySizeMatching(self, loadckpt)
 
 
-    # def forward(self, x):
-    #     backbone_feat = self.backbone(x)
-    #     fpn_feat = self.fpn(backbone_feat)
-    #     cls_logits, cnt_logits, reg_preds, angle_preds = self.head(fpn_feat)
-
-    #     return cls_logits, cnt_logits, reg_preds, angle_preds
-
 
 
 
     def forward(self, x=None, return_loss=False, device=None, img_size=None, batch_datas=None):
+        '''一个batch的前向流程(不包括反向传播, 更新梯度)(核心, 要更改训练pipeline主要改这里)
+
+        # Args:
+            - `x`:            fpn特征
+            - `return_loss`:  是否计算损失
+            - `img_size`:     固定图像大小 如[832, 832]
+            - `batch_imgs`:   一个batch里的图像              例:shape=[bs, 3, 600, 600]
+            - `batch_bboxes`: 一个batch里的GT框              例:[(1, 4), (4, 4), (4, 4), (1, 4), (5, 4), (2, 4), (3, 4), (1, 4)]
+            - `batch_labels`: 一个batch里的GT框类别          例:[(1,), (4,), (4,), (1,), (5,), (2,), (3,), (1,)]
+
+        # Returns:
+            - losses: 所有损失组成的列表(里面必须有一个total_loss字段, 用于反向传播)
+        '''
+        # 单纯的前向
         if not return_loss:
             backbone_feat = self.backbone(x)
             fpn_feat = self.fpn(backbone_feat)
             cls_logits, cnt_logits, reg_preds, angle_preds = self.head(fpn_feat)
             return cls_logits, cnt_logits, reg_preds, angle_preds
-        
+        # 包含损失计算的前向(训练时用到)
         else:
             batch_imgs, batch_bboxes, batch_angles, batch_labels = batch_datas[0].to(device), batch_datas[1].to(device), batch_datas[2].to(device), batch_datas[3].to(device)
             
@@ -72,31 +79,6 @@ class Model(nn.Module):
 
             return loss
         
-
-
-
-    def batchLoss(self, device, img_size, batch_datas):
-        '''一个batch的前向流程(不包括反向传播, 更新梯度)(核心, 要更改训练pipeline主要改这里)
-
-        # Args:
-            - `img_size`:     固定图像大小 如[832, 832]
-            - `batch_imgs`:   一个batch里的图像              例:shape=[bs, 3, 600, 600]
-            - `batch_bboxes`: 一个batch里的GT框              例:[(1, 4), (4, 4), (4, 4), (1, 4), (5, 4), (2, 4), (3, 4), (1, 4)]
-            - `batch_labels`: 一个batch里的GT框类别          例:[(1,), (4,), (4,), (1,), (5,), (2,), (3,), (1,)]
-
-        # Returns:
-            - losses: 所有损失组成的列表(里面必须有一个total_loss字段, 用于反向传播)
-        '''
-        batch_imgs, batch_bboxes, batch_angles, batch_labels = batch_datas[0].to(device), batch_datas[1].to(device), batch_datas[2].to(device), batch_datas[3].to(device)
-        
-        # 前向过程
-        backbone_feat = self.backbone(batch_imgs)
-        fpn_feat = self.fpn(backbone_feat)
-        # 计算损失(FCOS的正负样本分配在head部分执行)
-        loss = self.head.batchLoss(fpn_feat, batch_bboxes, batch_angles, batch_labels, img_size)
-
-        return loss
-
 
 
 
