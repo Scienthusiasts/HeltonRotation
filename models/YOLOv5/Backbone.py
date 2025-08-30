@@ -3,6 +3,7 @@ import torch.nn as nn
 import timm
 import numpy as np
 from torchvision import models
+import torch.distributed as dist
 
 from models.YOLOv5.YOLOBlocks import *
 
@@ -45,7 +46,7 @@ class Backbone(nn.Module):
                 param.requires_grad_(False)
         # 是否导入预训练权重
         if loadckpt: 
-            self.load_state_dict(torch.load(loadckpt))
+            self.load_state_dict(torch.load(loadckpt, map_location='cuda:{}'.format(dist.get_rank())))
             print('backbone pretrain ckpt loaded')
 
     def forward(self, x):

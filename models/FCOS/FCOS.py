@@ -44,17 +44,34 @@ class Model(nn.Module):
             self = loadWeightsBySizeMatching(self, loadckpt)
 
 
-    def forward(self, x):
-        backbone_feat = self.backbone(x)
-        fpn_feat = self.fpn(backbone_feat)
-        cls_logits, cnt_logits, reg_preds, angle_preds = self.head(fpn_feat)
+    # def forward(self, x):
+    #     backbone_feat = self.backbone(x)
+    #     fpn_feat = self.fpn(backbone_feat)
+    #     cls_logits, cnt_logits, reg_preds, angle_preds = self.head(fpn_feat)
 
-        return cls_logits, cnt_logits, reg_preds, angle_preds
-
-
+    #     return cls_logits, cnt_logits, reg_preds, angle_preds
 
 
 
+
+    def forward(self, x=None, return_loss=False, device=None, img_size=None, batch_datas=None):
+        if not return_loss:
+            backbone_feat = self.backbone(x)
+            fpn_feat = self.fpn(backbone_feat)
+            cls_logits, cnt_logits, reg_preds, angle_preds = self.head(fpn_feat)
+            return cls_logits, cnt_logits, reg_preds, angle_preds
+        
+        else:
+            batch_imgs, batch_bboxes, batch_angles, batch_labels = batch_datas[0].to(device), batch_datas[1].to(device), batch_datas[2].to(device), batch_datas[3].to(device)
+            
+            # 前向过程
+            backbone_feat = self.backbone(batch_imgs)
+            fpn_feat = self.fpn(backbone_feat)
+            # 计算损失(FCOS的正负样本分配在head部分执行)
+            loss = self.head.batchLoss(fpn_feat, batch_bboxes, batch_angles, batch_labels, img_size)
+
+            return loss
+        
 
 
 

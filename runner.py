@@ -24,6 +24,7 @@ from utils.exportUtils import torchExportOnnx
 class Runner():
     '''训练/验证/推理时的流程'''
     def __init__(self, 
+                 local_rank:int,
                  seed:int, 
                  mode:str, 
                  class_names:list, 
@@ -85,15 +86,20 @@ class Runner():
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         # NOTE:多卡:
         if self.mode=='train_ddp':
-            dist.init_process_group('nccl')
-            self.local_rank = dist.get_rank()
+            self.local_rank = local_rank
+            torch.cuda.set_device(self.local_rank)
+            # 让 env:// 自动从 RANK / WORLD_SIZE 推断；不要手传 rank/world_size
+            dist.init_process_group(backend='nccl', init_method='env://')
 
         '''日志模块'''
-        if mode in ['train', 'train_ddp', 'eval']:
+        if self.mode in ['train', 'train_ddp', 'eval']:
             self.logger, self.log_dir, self.log_save_path = myLogger(self.mode, self.log_dir)
             json_save_dir, _ = os.path.split(self.log_save_path)
             '''训练/验证时参数记录模块'''
             self.argsHistory = ArgsHistory(json_save_dir, self.mode)
+
+
+            
         '''导入数据集'''
         if self.mode in ['train', 'train_ddp', 'eval']:
             self.train_data, \
@@ -106,16 +112,19 @@ class Runner():
             self.eval_ann_dir = loadDatasets(mode=self.mode, seed=self.seed, **dataset)
         '''导入网络'''
         # 根据模型名称动态导入模块
-        self.model = dynamic_import_class(model.pop('path'), 'Model')(**model).to(self.device)
+        self.model = dynamic_import_class(model.pop('path'), 'Model')(**model)
         cudnn.benchmark = True
 
 
         # NOTE:多卡:
         if self.mode=='train_ddp':
-            self.model = nn.parallel.DistributedDataParallel(self.model.cuda(self.local_rank), device_ids=[self.local_rank], find_unused_parameters=True)
-            # 多卡时同步BN
+            # 多卡时同步BN(注意顺序, 先转换BN为SyncBN, 再用DDP包装)
             self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
-
+            # 先移动到正确的GPU，然后用DDP包装
+            self.model = self.model.cuda(self.local_rank)
+            self.model = DDP(self.model, device_ids=[self.local_rank], find_unused_parameters=True)
+        else:
+            self.model = self.model.to(self.device)
         '''定义优化器(自适应学习率的带动量梯度下降方法)'''
         if mode in ['train', 'train_ddp']:
             self.optimizer = selectOptimizer(**optimizer, model=self.model)
@@ -134,7 +143,7 @@ class Runner():
             self.test = Test(dataset['my_dataset']['path'], self.model, self.img_size, self.class_names, self.device, **test)
         '''打印训练参数'''
         # NOTE:多卡:
-        if self.mode in ['train', 'eval'] or (self.mode=='train_ddp' and dist.get_rank() == 0):
+        if self.mode in ['train', 'eval'] or (self.mode=='train_ddp' and self.local_rank == 0):
             val_data_len = self.val_data.__len__()
             train_data_len = self.train_data.__len__() if self.mode in ['train', 'train_ddp'] else 0
             printRunnerArgs(
@@ -172,20 +181,56 @@ class Runner():
             - total_loss:  所有损失之和
         '''
         # 一个batch的前向传播+计算损失
-        if self.mode=='train_ddp':
-            losses = self.model.module.batchLoss(self.local_rank, self.img_size, batch_datas)
-        else:
-            losses = self.model.batchLoss(self.device, self.img_size, batch_datas)
+        # if self.mode=='train_ddp':
+        #     losses = self.model.module.batchLoss(self.local_rank, self.img_size, batch_datas)
+        # else:
+        #     losses = self.model.batchLoss(self.device, self.img_size, batch_datas)
+
+        losses = self.model(return_loss=True, device=self.local_rank, img_size=self.img_size, batch_datas=batch_datas)
         # 将上一次迭代计算的梯度清零
         self.optimizer.zero_grad()
         # 反向传播
         losses['total_loss'].backward()
+
+
+        # if self.mode == 'train_ddp':
+        #     # 同步所有进程的梯度
+        #     for param in self.model.parameters():
+        #         dist.all_reduce(param.grad.data, op=dist.ReduceOp.SUM)
+        #         param.grad.data /= dist.get_world_size()
+
+
+        # 只在 DDP 模式 & 每 100 步检查一次
+        if self.mode == 'train_ddp' and step % 100 == 0:
+            torch.cuda.synchronize()   # 等待所有 CUDA 内核完成
+            dist.barrier()             # 确保所有进程的 backward 已结束
+
+            for name, param in self.model.named_parameters():
+                if param.grad is not None:
+                    grad_norm = param.grad.norm()
+                    # 克隆，避免修改原始梯度
+                    grad_norm_tensor = grad_norm.detach().clone()
+                    dist.all_reduce(grad_norm_tensor, op=dist.ReduceOp.SUM)
+                    avg_norm = grad_norm_tensor.item() / dist.get_world_size()
+
+                    if abs(grad_norm.item() - avg_norm) > 1e-6:
+                        print(f"[Rank {self.local_rank}] Gradient not synchronized for {name}")
+                        print(f"Local norm: {grad_norm.item()}, Average norm: {avg_norm}")
+
+
         # 更新权重
         self.optimizer.step()
         # 更新学习率
         self.scheduler.step(epoch * train_batch_num + step) 
 
         return losses
+
+
+
+
+
+
+
 
 
 
@@ -202,7 +247,7 @@ class Runner():
             '''一个batch的训练, 并得到损失'''
             losses = self.fitBatch(step, train_batch_num, epoch, batch_datas)
             # NOTE:多卡
-            if self.mode=='train' or (self.mode=='train_ddp' and dist.get_rank() == 0):
+            if self.mode=='train' or (self.mode=='train_ddp' and self.local_rank == 0):
                 '''打印日志'''
                 printLog(
                     mode='train', 
@@ -242,7 +287,7 @@ class Runner():
             # 同步所有进程确保训练完全完成(类似阻塞)
             if self.mode=='train_ddp':dist.barrier()
             # NOTE:多卡
-            if self.mode=='train' or (self.mode=='train_ddp' and dist.get_rank() == 0):
+            if self.mode=='train' or (self.mode=='train_ddp' and self.local_rank == 0):
                 '''以json格式保存args'''
                 self.argsHistory.saveRecord()
                 '''一个epoch的验证'''
@@ -338,6 +383,7 @@ class Runner():
 if __name__ == '__main__':
     args = getArgs()
     config_path = args.config
+    local_rank = args.local_rank
     # 使用动态导入的模块
     config_file = dynamic_import_class(config_path, get_class=False)
     # 调用参数
@@ -346,7 +392,7 @@ if __name__ == '__main__':
     test_config = config_file.test
     export_config = config_file.export
 
-    runner = Runner(**runner_config)
+    runner = Runner(**runner_config, local_rank=local_rank)
     # 训练模式
     if runner_config['mode'] in ['train', 'train_ddp']:
         # 拷贝一份当前训练对应的config文件(方便之后查看细节)

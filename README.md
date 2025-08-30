@@ -68,6 +68,111 @@
 
 - add prototypes for experimental validate
 
+**update 25/8/30**
+
+- remove prototypes
+
+- **DDP bug 修改:**
+
+  - 1.runner.py
+
+    ```python
+            # NOTE:多卡:
+            if self.mode=='train_ddp':
+                self.model = nn.parallel.DistributedDataParallel(self.model.cuda(self.local_rank), device_ids=[self.local_rank], find_unused_parameters=True)
+                # 多卡时同步BN
+                self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
+    ```
+
+    修改为
+
+    ```
+            # NOTE:多卡:
+            if self.mode=='train_ddp':
+                # 多卡时同步BN(注意顺序, 先转换BN为SyncBN, 再用DDP包装)
+                self.model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(self.model)
+                self.model = nn.parallel.DistributedDataParallel(self.model.cuda(self.local_rank), device_ids=[self.local_rank], find_unused_parameters=True)
+    ```
+
+  - 2.datasets/FCOSDataset.py(其他包含worker_init_fn函数的也需要修改)
+
+    ```python
+        @staticmethod
+        def worker_init_fn(worker_id, seed, rank=0):
+            worker_seed = seed + rank
+            random.seed(worker_seed)
+            np.random.seed(worker_seed)
+            torch.manual_seed(worker_seed)
+    ```
+
+    修改为
+
+    ```python
+        @staticmethod
+        def worker_init_fn(worker_id, seed, rank=0):
+            # 避免每一个子进程数据采样重复
+            worker_seed = seed + rank*1000 + worker_id
+            random.seed(worker_seed)
+            np.random.seed(worker_seed)
+            torch.manual_seed(worker_seed)
+    ```
+
+  - 3.models/FCOS/Backbone.py(其他包含torch.load的部分也需要修改)
+
+    ```python
+                self.load_state_dict(torch.load(loadckpt))
+    ```
+
+    修改为
+
+    ```python
+                self.load_state_dict(torch.load(loadckpt, map_location='cuda:{}'.format(dist.get_rank())))
+    ```
+
+  - **4.runner.py: (核心问题, 不同卡上的模型梯度不同步的问题)**
+
+    > 问题描述：
+    >
+    > losses = self.model.module.batchLoss(self.local_rank, self.img_size, batch_datas) 这样写法有一个问题：
+    >
+    > batchLoss 是模块的方法，它里面即便调用了 self(...)，这个 self 是始 nn.Module, 不是 DDP 包装器；因此 DDP 的 reducer hook 不会挂到 forward 输出上，很多参数的梯度根本没被 allreduce
+    >
+    > 原因分析:
+    >
+    > 梯度不同步问题的原因在于, 即使batchLoss里面调用了forward方法, 但是.module的调用逻辑会直接绕开DDP包装器, 导致DDP 的 reducer hook挂不到forward 输出上，因此实际梯度并没有同步. 
+    >
+    > 因此，解决思路应该围绕:如何修改调用逻辑, 让DDP包装器怎么能够直接调用到forward方法, 而不是调用batchLoss绕过了forward方法
+    >
+    > 解决思路：
+    >
+    > 1.直接把loss计算写在模型的forward方法里, 因为DDP包装器允许直接调用forward方法:self.model.forward(..), 不需要self.model.module.forward(..)
+    >
+    > 2.batchLoss 可以只做 loss 计算，但 forward 一定走 self.model.forward(..):
+    >
+    > 比如:
+    >
+    > feat = self.model.forward(...) # 这里是用的DDP包装器调用的, 会同步梯度
+    >
+    > loss = self.model.module.batchLoss(feat, ...) # 这里直接用.module调用也没关系(只要保证batchLoss里为无梯度依赖的张量操作), 因为上一行DDP 的 reducer hook 已经挂好了, 这样就不会绕过 DDP
+    >
+    > 3.把forward方法里加一个ifelse, 分为单纯forwar的模式和计算loss的模式(也是调用loss先调用forward)
+    >
+    > 什么是无梯度依赖的张量操作：
+    >
+    > 操作只是对已有的计算图进行进一步处理，而不引入新的需要梯度的参数(参数可以理解为模型本身的可学习参数)。
+    >
+    > 计算 loss = criterion(tensor1, tensor2)，这个操作不会引入新的可训练参数，只是把已有的计算图组合起来形成标量 Loss,
+    >
+    > 如果在 batchLoss 内重新调用了模型的子模块（如 self.backbone()、self.fpn()）而不是使用外部传入的预测结果，或者调用了 .data、.detach() 等方法中断了计算图，DDP hook 不会作用于这部分新建的计算图
+    >
+    > 目前采用的解决方法:
+    >
+    > **把batchLoss写在forward中, forward包括两个模式, 一个纯粹的前向, 一个包含计算loss的前向**
+    >
+    > 其他疑问:
+    >
+    > \# 如果梯度不同步，且最终保存的是rank0的权重，那训练时是否就等效于只训练rank0的模型?
+
 ## Demo
 
 ![1](https://github.com/Scienthusiasts/HeltonRotation/blob/dev/demo/demo.png)
@@ -82,8 +187,11 @@
 
 ## Train/Eval/Test
 
-```
-整理与完善中...
+```shell
+# train
+CUDA_VISIBLE_DEVICES=7 python runner.py --config configs/fcos.py
+# train_ddp
+sh run.sh
 ```
 
 

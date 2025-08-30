@@ -16,6 +16,7 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 from matplotlib.patches import Polygon, Rectangle
 from ensemble_boxes import weighted_boxes_fusion as wbf
+import torch.distributed as dist
 
 from datasets.preprocess import Transform
 from utils.rotateUtils import rbox2PolyNP
@@ -54,10 +55,10 @@ def seed_everything(seed):
 
 
 
-
 def loadWeightsBySizeMatching(model:nn.Module, ckpt_path:str):
     print('Loading weights into state dict by size matching...')
     model_dict = model.state_dict()
+    # pretrained_dict = torch.load(ckpt_path, map_location='cuda:{}'.format(dist.get_rank()))
     pretrained_dict = torch.load(ckpt_path)
     a = {}
     for (kk, vv), (k, v) in zip(pretrained_dict.items(), model_dict.items()):

@@ -1,26 +1,25 @@
 import os
 
 # train train_ddp eval test export 
-MODE = 'train_ddp'
-log_name = 'fcos_3x_bs16_adamw_coslr2e-3_riou_ga_trainval_ddp'
+MODE = 'test'
+log_name = 'fcos_3x_bs16_adamw_coslr2e-3_riou_ga_ddp'
 # mobilenetv3_large_100.ra_in1k  resnet50.a1_in1k  darknetaa53.c2ns_in1k cspdarknet53.ra_in1k cspresnext50.ra_in1k
 FROZEBACKBONE = False
 BACKBONE = 'resnet50.a1_in1k'
-BACKBONE_CKPT = "/data/yht/code/HeltonRotation/ckpts/backbone_resnet50.a1_in1k.pt"
+BACKBONE_CKPT = False
 
-LOADCKPT = False
+# LOADCKPT = f"/data/yht/code/HeltonRotation/log/fcos_3x_bs16_adamw_coslr1e-3_riou_ga_ddp/train_ddp/2025-08-29-00-37-28_train/best_AP50.pt"
+LOADCKPT = f"/data/yht/code/HeltonRotation/log/fcos_3x_bs16_adamw_coslr2e-3_riou_ga_trainval_ddp/train_ddp/2025-08-29-16-43-13_train/best_AP50.pt"
 TESTCKPT = LOADCKPT
 RESUME = False
 TTA = [[640,640], [832,832], [960,960]]
 TTAOPEN = False
-lr=0.002
+lr=0.001
 epoch = 3*12 + 1
 bs = 4
 
-TESTCKPT = f"F:/DeskTop/git/CKPT/HR_ckpt/yolov5s_obb/Select_IoUsmooths1_theta_rootfocalloss_lr1e-2_sgd_trainval_modifyaug/2024-07-29-17-25-45_train/last.pt"
 onnx_export_dir = os.path.join('onnx_ckpt', TESTCKPT.split('/')[1])
 onnx_export_name = f"{TESTCKPT.split('/')[-2]}.onnx"
-TESTCKPT = LOADCKPT
 
 
 
@@ -41,10 +40,11 @@ cat_names2id = {
 }
 reverse_map = None
 ann_name = {'dota':'annfiles', 'yolo':'yolo_longside_format_annfiles'}[ann_mode]
-train_img_dir = "/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/trainval/images"
-train_ann_dir = f"/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/trainval/{version}/{ann_name}"
+train_img_dir = "/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/train/images"
+train_ann_dir = f"/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/train/{version}/{ann_name}"
 # 要推理test测试集时只需修改val_img_dir:
-val_img_dir = "/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/val/images"
+# val_img_dir = "/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/val/images"
+val_img_dir = "/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/test/images"
 val_ann_dir = f"/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/val/{version}/{ann_name}"
 # 这两个评估时会用到, 其中eval_ann_dir里的txt是基于DOTA八参格式
 imgset_file_path = "/data/yht/data/DOTA-1.0-1.5_ss_size-1024_gap-200/val_img_name.txt"
@@ -163,7 +163,7 @@ eval = dict(
     # log_dir当inferring=False时使用传参(使用之前的推理结果)(不包含eval_tmp的路径)
     log_dir = False,
     ckpt_path = TESTCKPT,
-    T = 0.001,        
+    T = 0.01,        
 )
 
 
@@ -172,13 +172,13 @@ test = dict(
     mode = 'image',
     # '''DOTA'''
 
-    img_path = r"samples/dota1.0/P1936__1024__0___54.png",
+    img_path = r"/data/yht/code/HeltonRotation/samples/dota1.0/P1001__1024__2472___337.png",
     save_vis_path = './samples/res1.jpg',
     # video
     # img_path = "./samples/videos/cars_people.mp4",
     # save_vis_path = './samples/videos/res1.mp4',
     ckpt_path = TESTCKPT,
-    T = 0.25,
+    T = 0.2,
     agnostic = False,
     show_text = False,
     vis_heatmap = True,

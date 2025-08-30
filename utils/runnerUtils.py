@@ -88,7 +88,7 @@ def getArgs():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--config', type=str, help='config file')
-    parser.add_argument("--local_rank", default=-1, type=int)
+    parser.add_argument("--local-rank", default=0, type=int)
     parser.add_argument('--n_gpus', default=1, type=int)
     args = parser.parse_args()
     return args
@@ -494,3 +494,4 @@ def trainResume(
     argsHistory.loadRecord(json_dir)
 
     return start_epoch
+

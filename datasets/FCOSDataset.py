@@ -359,8 +359,8 @@ class DOTA2LongSideFormatYOLODataset(Dataset):
     @staticmethod
     def worker_init_fn(worker_id, seed, rank=0):
         # rank*1000 + worker_id 避免每一个子进程数据采样重复
-        worker_seed = seed + rank
-        # worker_seed = seed + rank*1000 + worker_id
+        # worker_seed = seed + rank
+        worker_seed = seed + rank*1000 + worker_id
         random.seed(worker_seed)
         np.random.seed(worker_seed)
         torch.manual_seed(worker_seed)
